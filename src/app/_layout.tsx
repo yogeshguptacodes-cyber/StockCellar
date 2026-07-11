@@ -6,10 +6,14 @@ import {
 } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
+import { container } from '@/core/di/container';
+import { useSettingsStore } from '@/features/settings/store/settings-store';
+import { ErrorBoundary } from '@/shared/components/error-boundary';
+import { SnackbarHost } from '@/shared/components/ui';
 import { AppThemeProvider, useTheme } from '@/theme';
 
 /**
@@ -43,16 +47,30 @@ function RootNavigator() {
   return (
     <NavigationThemeProvider value={navigationTheme}>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="session/[id]" options={{ title: 'Session details' }} />
+      </Stack>
+      <SnackbarHost />
     </NavigationThemeProvider>
   );
 }
 
 export default function RootLayout() {
+  const themePreference = useSettingsStore((state) => state.themePreference);
+  const hydrate = useSettingsStore((state) => state.hydrate);
+
+  useEffect(() => {
+    void hydrate();
+    container.analytics.track({ name: 'app_open' });
+  }, [hydrate]);
+
   return (
     <GestureHandlerRootView style={styles.root}>
-      <AppThemeProvider>
-        <RootNavigator />
+      <AppThemeProvider preference={themePreference}>
+        <ErrorBoundary>
+          <RootNavigator />
+        </ErrorBoundary>
       </AppThemeProvider>
     </GestureHandlerRootView>
   );
