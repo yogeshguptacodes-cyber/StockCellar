@@ -1,4 +1,4 @@
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { emptyDraftRow, type DraftRow } from '../store/register-store';
@@ -20,6 +20,7 @@ import { useTheme } from '@/theme';
 export const CELL_WIDTH = 40;
 export const CELL_GAP = 4;
 export const AMOUNT_INPUT_WIDTH = 96;
+const CELL_HEIGHT = 34;
 
 export interface RegisterRowProps {
   item: LiquorItem;
@@ -36,6 +37,61 @@ function parseDigits(text: string): number {
   const digits = text.replace(/[^0-9]/g, '');
   return digits === '' ? 0 : Number.parseInt(digits, 10);
 }
+
+interface EditableCellProps {
+  value: number;
+  width: number;
+  maxLength: number;
+  accessibilityLabel: string;
+  emphasize?: boolean;
+  onCommit: (value: number) => void;
+}
+
+/** One numeric grid cell with a focus ring — quiet at rest, obvious when active. */
+const EditableCell = memo(function EditableCell({
+  value,
+  width,
+  maxLength,
+  accessibilityLabel,
+  emphasize = false,
+  onCommit,
+}: EditableCellProps) {
+  const theme = useTheme();
+  const [focused, setFocused] = useState(false);
+
+  return (
+    <TextInput
+      value={value === 0 ? '' : String(value)}
+      onChangeText={(text) => onCommit(parseDigits(text))}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      placeholder="·"
+      placeholderTextColor={theme.colors.textTertiary}
+      keyboardType="number-pad"
+      selectTextOnFocus
+      maxLength={maxLength}
+      accessibilityLabel={accessibilityLabel}
+      style={[
+        styles.cellText,
+        theme.typography.label,
+        {
+          width,
+          height: CELL_HEIGHT,
+          borderRadius: theme.radius.xs,
+          borderWidth: 1,
+          borderColor: focused ? theme.colors.primary : 'transparent',
+          backgroundColor: focused ? theme.colors.surface : theme.colors.surfaceMuted,
+          color:
+            value > 0
+              ? emphasize
+                ? theme.colors.primary
+                : theme.colors.textPrimary
+              : theme.colors.textTertiary,
+        },
+      ]}
+    />
+  );
+});
 
 /** One sheet row: item name + six size cells (or the amount field). Memoized. */
 export const RegisterRow = memo(function RegisterRow({
@@ -62,16 +118,10 @@ export const RegisterRow = memo(function RegisterRow({
     computed = row[tab];
   }
 
-  const handleAmountChange = useCallback(
-    (text: string) => onSetAmount?.(item.id, parseDigits(text)),
+  const handleAmountCommit = useCallback(
+    (value: number) => onSetAmount?.(item.id, value),
     [item.id, onSetAmount],
   );
-
-  const cellBase = {
-    width: CELL_WIDTH,
-    height: 34,
-    borderRadius: theme.radius.xs,
-  };
 
   return (
     <View
@@ -99,59 +149,33 @@ export const RegisterRow = memo(function RegisterRow({
             {row.amountRs > 0 ? row.amountRs.toLocaleString('en-IN') : '·'}
           </AppText>
         ) : (
-          <TextInput
-            value={row.amountRs === 0 ? '' : String(row.amountRs)}
-            onChangeText={handleAmountChange}
-            placeholder="0"
-            placeholderTextColor={theme.colors.textTertiary}
-            keyboardType="number-pad"
-            selectTextOnFocus
+          <EditableCell
+            value={row.amountRs}
+            width={AMOUNT_INPUT_WIDTH}
             maxLength={8}
             accessibilityLabel={`Sale amount for ${item.name}`}
-            style={[
-              styles.cellText,
-              theme.typography.label,
-              {
-                width: AMOUNT_INPUT_WIDTH,
-                height: 34,
-                borderRadius: theme.radius.xs,
-                backgroundColor: theme.colors.surfaceMuted,
-                color: row.amountRs > 0 ? theme.colors.primary : theme.colors.textTertiary,
-              },
-            ]}
+            emphasize
+            onCommit={handleAmountCommit}
           />
         )
       ) : (
         <View style={[styles.cells, { gap: CELL_GAP }]}>
           {BOTTLE_SIZES.map((size) => {
             if (editableField) {
-              const value = row[editableField][size];
               return (
-                <TextInput
+                <EditableCell
                   key={size}
-                  value={value === 0 ? '' : String(value)}
-                  onChangeText={(text) => onSetCell?.(item.id, editableField, size, parseDigits(text))}
-                  placeholder="·"
-                  placeholderTextColor={theme.colors.textTertiary}
-                  keyboardType="number-pad"
-                  selectTextOnFocus
+                  value={row[editableField][size]}
+                  width={CELL_WIDTH}
                   maxLength={4}
                   accessibilityLabel={`${item.name} ${editableField} ${size} ml`}
-                  style={[
-                    styles.cellText,
-                    theme.typography.label,
-                    cellBase,
-                    {
-                      backgroundColor: theme.colors.surfaceMuted,
-                      color: value > 0 ? theme.colors.textPrimary : theme.colors.textTertiary,
-                    },
-                  ]}
+                  onCommit={(value) => onSetCell?.(item.id, editableField, size, value)}
                 />
               );
             }
             const value = computed ? computed[size] : 0;
             return (
-              <View key={size} style={[styles.computedCell, cellBase]}>
+              <View key={size} style={[styles.computedCell, { width: CELL_WIDTH, height: CELL_HEIGHT }]}>
                 <AppText
                   variant="label"
                   color={value > 0 ? (tab === 'sale' ? 'primary' : 'textPrimary') : 'textTertiary'}>

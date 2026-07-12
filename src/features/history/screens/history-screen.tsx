@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { ChevronRight, ClipboardList, History } from 'lucide-react-native';
 import { useCallback, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 
@@ -8,10 +8,12 @@ import { useHistoryStore } from '../store/history-store';
 import { container } from '@/core/di/container';
 import { summarizeRegister } from '@/domain/models';
 import { Screen } from '@/shared/components/layouts/screen';
-import { AppCard, AppText, EmptyState } from '@/shared/components/ui';
+import { AppCard, AppText, EmptyState, Skeleton } from '@/shared/components/ui';
 import { formatRupees } from '@/shared/utils/format-currency';
 import { formatDate } from '@/shared/utils/format-date';
 import { useTheme } from '@/theme';
+
+const SKELETON_ROWS = 4;
 
 export function HistoryScreen() {
   const theme = useTheme();
@@ -36,9 +38,13 @@ export function HistoryScreen() {
       <View style={{ gap: theme.spacing.md, paddingTop: theme.spacing.md }}>
         <AppText variant="headline">History</AppText>
 
-        {status === 'ready' && registers.length === 0 ? (
+        {status === 'loading' || status === 'idle' ? (
+          Array.from({ length: SKELETON_ROWS }, (_, index) => (
+            <Skeleton key={index} height={76} radius={theme.radius.lg} />
+          ))
+        ) : status === 'ready' && registers.length === 0 ? (
           <EmptyState
-            icon="time-outline"
+            icon={History}
             title="No registers yet"
             message="Save a daily register — every completed sheet appears here."
             actionLabel="Start a register"
@@ -60,7 +66,7 @@ export function HistoryScreen() {
                       styles.iconBubble,
                       { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.full },
                     ]}>
-                    <Ionicons name="reader-outline" size={20} color={theme.colors.primary} />
+                    <ClipboardList size={19} color={theme.colors.primary} strokeWidth={2} />
                   </View>
                   <View style={styles.rowInfo}>
                     <AppText variant="bodyStrong">{formatDate(register.date)}</AppText>
@@ -72,7 +78,7 @@ export function HistoryScreen() {
                     <AppText variant="bodyStrong" color="primary">
                       {formatRupees(summary.totalAmountRs)}
                     </AppText>
-                    <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
+                    <ChevronRight size={16} color={theme.colors.textTertiary} strokeWidth={2} />
                   </View>
                 </View>
               </AppCard>

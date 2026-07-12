@@ -1,5 +1,5 @@
-import { Ionicons } from '@expo/vector-icons';
-import { memo, type ComponentProps } from 'react';
+import type { LucideIcon } from 'lucide-react-native';
+import { memo } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -15,14 +15,15 @@ import { useTheme, type AppTheme } from '@/theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md' | 'lg';
-export type IconName = ComponentProps<typeof Ionicons>['name'];
 
 export interface AppButtonProps {
   label: string;
   onPress: () => void;
   variant?: ButtonVariant;
   size?: ButtonSize;
-  icon?: IconName;
+  icon?: LucideIcon;
+  /** Render the icon after the label instead of before. */
+  iconAfter?: boolean;
   loading?: boolean;
   disabled?: boolean;
   fullWidth?: boolean;
@@ -72,7 +73,7 @@ function variantColors(theme: AppTheme, variant: ButtonVariant): VariantColors {
 }
 
 const SIZE_HEIGHT: Record<ButtonSize, number> = { sm: 36, md: 44, lg: 52 };
-const ICON_SIZE: Record<ButtonSize, number> = { sm: 16, md: 18, lg: 22 };
+const ICON_SIZE: Record<ButtonSize, number> = { sm: 15, md: 17, lg: 20 };
 const DISABLED_OPACITY = 0.45;
 
 export const AppButton = memo(function AppButton({
@@ -80,7 +81,8 @@ export const AppButton = memo(function AppButton({
   onPress,
   variant = 'primary',
   size = 'md',
-  icon,
+  icon: Icon,
+  iconAfter = false,
   loading = false,
   disabled = false,
   fullWidth = false,
@@ -90,6 +92,10 @@ export const AppButton = memo(function AppButton({
   const theme = useTheme();
   const colors = variantColors(theme, variant);
   const inactive = disabled || loading;
+
+  const iconElement = Icon ? (
+    <Icon size={ICON_SIZE[size]} color={colors.content} strokeWidth={2.25} />
+  ) : null;
 
   return (
     <Pressable
@@ -120,10 +126,11 @@ export const AppButton = memo(function AppButton({
         <ActivityIndicator size="small" color={colors.content} />
       ) : (
         <View style={[styles.content, { gap: theme.spacing.sm }]}>
-          {icon ? <Ionicons name={icon} size={ICON_SIZE[size]} color={colors.content} /> : null}
+          {!iconAfter && iconElement}
           <AppText variant={size === 'lg' ? 'bodyStrong' : 'label'} style={{ color: colors.content }}>
             {label}
           </AppText>
+          {iconAfter && iconElement}
         </View>
       )}
     </Pressable>

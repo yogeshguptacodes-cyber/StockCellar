@@ -1,7 +1,16 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
+import {
+  AlertCircle,
+  Camera,
+  Check,
+  CheckCircle2,
+  FileText,
+  FlaskConical,
+  Images,
+  Sparkles,
+} from 'lucide-react-native';
 import { useCallback } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 
@@ -143,7 +152,7 @@ export function ScannerScreen() {
                   styles.uploadIcon,
                   { backgroundColor: theme.colors.accentMuted, borderRadius: theme.radius.full },
                 ]}>
-                <Ionicons name="document-text-outline" size={28} color={theme.colors.accent} />
+                <FileText size={26} color={theme.colors.accent} strokeWidth={1.75} />
               </View>
               <AppText variant="subtitle" style={styles.centered}>
                 Capture your stock register
@@ -153,15 +162,11 @@ export function ScannerScreen() {
               </AppText>
               <View style={[styles.uploadButtons, { gap: theme.spacing.sm }]}>
                 {Platform.OS !== 'web' && (
-                  <AppButton
-                    label="Take photo"
-                    icon="camera-outline"
-                    onPress={() => void captureWithCamera()}
-                  />
+                  <AppButton label="Take photo" icon={Camera} onPress={() => void captureWithCamera()} />
                 )}
                 <AppButton
                   label="Choose image"
-                  icon="images-outline"
+                  icon={Images}
                   variant={Platform.OS === 'web' ? 'primary' : 'secondary'}
                   onPress={() => void pickFromGallery()}
                 />
@@ -170,11 +175,11 @@ export function ScannerScreen() {
 
             {/* Provider transparency */}
             <View style={[styles.providerRow, { gap: theme.spacing.sm }]}>
-              <Ionicons
-                name={geminiActive ? 'sparkles' : 'flask-outline'}
-                size={14}
-                color={geminiActive ? theme.colors.accent : theme.colors.textTertiary}
-              />
+              {geminiActive ? (
+                <Sparkles size={13} color={theme.colors.accent} strokeWidth={2} />
+              ) : (
+                <FlaskConical size={13} color={theme.colors.textTertiary} strokeWidth={2} />
+              )}
               <AppText variant="caption" color="textTertiary">
                 {geminiActive
                   ? 'AI extraction powered by Google Gemini'
@@ -213,7 +218,7 @@ export function ScannerScreen() {
               <View style={{ gap: theme.spacing.sm }}>
                 <AppButton
                   label="Extract quantities"
-                  icon="sparkles-outline"
+                  icon={Sparkles}
                   size="lg"
                   fullWidth
                   onPress={handleExtract}
@@ -234,7 +239,7 @@ export function ScannerScreen() {
             <AppText variant="title">Found {result.rows.length} rows</AppText>
             {result.rows.length === 0 ? (
               <EmptyState
-                icon="document-text-outline"
+                icon={FileText}
                 title="Nothing recognized"
                 message="The sheet couldn't be read. Try a clearer photo."
                 actionLabel="Start over"
@@ -260,19 +265,17 @@ export function ScannerScreen() {
                           </AppText>
                         ) : null}
                       </View>
-                      <Ionicons
-                        name={row.confidence < LOW_CONFIDENCE ? 'alert-circle' : 'checkmark-circle'}
-                        size={20}
-                        color={
-                          row.confidence < LOW_CONFIDENCE ? theme.colors.warning : theme.colors.success
-                        }
-                      />
+                      {row.confidence < LOW_CONFIDENCE ? (
+                        <AlertCircle size={19} color={theme.colors.warning} strokeWidth={2} />
+                      ) : (
+                        <CheckCircle2 size={19} color={theme.colors.success} strokeWidth={2} />
+                      )}
                     </View>
                   </AppCard>
                 ))}
                 <AppButton
                   label="Fill the register"
-                  icon="checkmark"
+                  icon={Check}
                   size="lg"
                   fullWidth
                   onPress={handleApply}

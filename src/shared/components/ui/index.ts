@@ -1,7 +1,10 @@
-export { AppButton, type AppButtonProps, type ButtonSize, type ButtonVariant, type IconName } from './app-button';
+export { AppButton, type AppButtonProps, type ButtonSize, type ButtonVariant } from './app-button';
 export { AppCard, type AppCardProps } from './app-card';
 export { AppChip, type AppChipProps } from './app-chip';
 export { AppText, type AppTextProps } from './app-text';
 export { EmptyState, type EmptyStateProps } from './empty-state';
+export { Fab, type FabProps } from './fab';
+export { IconButton, type IconButtonProps } from './icon-button';
 export { SearchInput, type SearchInputProps } from './search-input';
+export { Skeleton, type SkeletonProps } from './skeleton';
 export { SnackbarHost } from './snackbar-host';

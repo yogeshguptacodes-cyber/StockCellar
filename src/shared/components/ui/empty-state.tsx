@@ -1,6 +1,7 @@
-import { Ionicons } from '@expo/vector-icons';
-import { memo, type ComponentProps } from 'react';
+import type { LucideIcon } from 'lucide-react-native';
+import { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { AppButton } from './app-button';
 import { AppText } from './app-text';
@@ -8,18 +9,19 @@ import { AppText } from './app-text';
 import { useTheme } from '@/theme';
 
 export interface EmptyStateProps {
-  icon: ComponentProps<typeof Ionicons>['name'];
+  icon: LucideIcon;
   title: string;
   message: string;
   actionLabel?: string;
   onAction?: () => void;
 }
 
-const ICON_SIZE = 44;
+const BUBBLE_SIZE = 72;
+const ICON_SIZE = 30;
 
 /** Standard empty/zero-data state used across list screens. */
 export const EmptyState = memo(function EmptyState({
-  icon,
+  icon: Icon,
   title,
   message,
   actionLabel,
@@ -27,8 +29,16 @@ export const EmptyState = memo(function EmptyState({
 }: EmptyStateProps) {
   const theme = useTheme();
   return (
-    <View style={[styles.container, { gap: theme.spacing.md, padding: theme.spacing.xxl }]}>
-      <Ionicons name={icon} size={ICON_SIZE} color={theme.colors.textTertiary} />
+    <Animated.View
+      entering={FadeIn.duration(theme.motion.duration.slow)}
+      style={[styles.container, { gap: theme.spacing.md, padding: theme.spacing.xxl }]}>
+      <View
+        style={[
+          styles.bubble,
+          { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.full },
+        ]}>
+        <Icon size={ICON_SIZE} color={theme.colors.primary} strokeWidth={1.75} />
+      </View>
       <AppText variant="subtitle" style={styles.centered}>
         {title}
       </AppText>
@@ -38,12 +48,18 @@ export const EmptyState = memo(function EmptyState({
       {actionLabel && onAction ? (
         <AppButton label={actionLabel} onPress={onAction} variant="secondary" />
       ) : null}
-    </View>
+    </Animated.View>
   );
 });
 
 const styles = StyleSheet.create({
   container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bubble: {
+    width: BUBBLE_SIZE,
+    height: BUBBLE_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
   },

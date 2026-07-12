@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { CheckCircle2 } from 'lucide-react-native';
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useSettingsStore } from '../store/settings-store';
@@ -55,7 +55,7 @@ export function SettingsScreen() {
                     </AppText>
                   </View>
                   {selected ? (
-                    <Ionicons name="checkmark-circle" size={22} color={theme.colors.primary} />
+                    <CheckCircle2 size={20} color={theme.colors.primary} strokeWidth={2} />
                   ) : null}
                 </Pressable>
               );

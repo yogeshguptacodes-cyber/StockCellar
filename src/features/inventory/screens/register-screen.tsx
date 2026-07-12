@@ -1,6 +1,7 @@
 import { FlashList } from '@shopify/flash-list';
+import { Check, ChevronDown, ChevronRight, CloudOff, RotateCcw, Undo2, Wine } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RegisterRow } from '../components/register-row';
@@ -15,15 +16,45 @@ import {
   rowSale,
   rowTotal,
   type BottleSize,
+  type Category,
   type LiquorItem,
   type SizeQuantities,
 } from '@/domain/models';
-import { AppButton, AppChip, AppText, EmptyState, SearchInput } from '@/shared/components/ui';
+import {
+  AppChip,
+  AppText,
+  EmptyState,
+  Fab,
+  IconButton,
+  SearchInput,
+  Skeleton,
+} from '@/shared/components/ui';
 import { useUiStore } from '@/shared/store/ui-store';
+import { formatRupees } from '@/shared/utils/format-currency';
 import { formatDate, toIsoDate } from '@/shared/utils/format-date';
 import { useTheme } from '@/theme';
 
 const SEARCH_ANALYTICS_DEBOUNCE_MS = 700;
+const SKELETON_ROWS = 9;
+
+/** Flat list model: category headers interleaved with item rows. */
+type ListEntry =
+  | { readonly kind: 'header'; readonly category: Category; readonly count: number; readonly collapsed: boolean }
+  | { readonly kind: 'item'; readonly item: LiquorItem };
+
+function RegisterSkeleton() {
+  const theme = useTheme();
+  return (
+    <View style={{ gap: theme.spacing.sm, paddingTop: theme.spacing.md }}>
+      <Skeleton width={140} height={28} />
+      <Skeleton height={44} radius={theme.radius.md} />
+      <Skeleton width={260} height={30} radius={theme.radius.full} />
+      {Array.from({ length: SKELETON_ROWS }, (_, index) => (
+        <Skeleton key={index} height={42} radius={theme.radius.sm} />
+      ))}
+    </View>
+  );
+}
 
 /**
  * The daily stock register — a digital twin of the paper sheet.
@@ -45,6 +76,7 @@ export function RegisterScreen() {
   const [query, setQuery] = useState('');
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [tab, setTab] = useState<RegisterTab>('opening');
+  const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
 
   useEffect(() => {
     void initialize();
@@ -62,23 +94,55 @@ export function RegisterScreen() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  const filtered = useMemo(() => {
+  const searching = query.trim().length > 0;
+
+  /** Grouped list: category header + rows; searching expands everything. */
+  const listData = useMemo<ListEntry[]>(() => {
     const needle = query.trim().toLowerCase();
-    return catalog.filter((item) => {
-      if (categoryId && item.categoryId !== categoryId) {
-        return false;
+    const entries: ListEntry[] = [];
+    for (const category of categories) {
+      if (categoryId && category.id !== categoryId) {
+        continue;
       }
-      return needle.length === 0 || item.name.toLowerCase().includes(needle);
-    });
-  }, [catalog, query, categoryId]);
+      const items = catalog.filter(
+        (item) =>
+          item.categoryId === category.id &&
+          (needle.length === 0 || item.name.toLowerCase().includes(needle)),
+      );
+      if (items.length === 0) {
+        continue;
+      }
+      const isCollapsed = !searching && collapsed.has(category.id);
+      entries.push({ kind: 'header', category, count: items.length, collapsed: isCollapsed });
+      if (!isCollapsed) {
+        for (const item of items) {
+          entries.push({ kind: 'item', item });
+        }
+      }
+    }
+    return entries;
+  }, [catalog, categories, query, categoryId, collapsed, searching]);
 
   const touchedCount = useMemo(() => Object.keys(touched).length, [touched]);
+
+  /** Live draft summary for the sticky bar. */
+  const draftSummary = useMemo(() => {
+    let saleUnits = 0;
+    let amountRs = 0;
+    for (const row of Object.values(rows)) {
+      const sale = rowSale(row);
+      for (const size of BOTTLE_SIZES) {
+        saleUnits += sale[size];
+      }
+      amountRs += row.amountRs;
+    }
+    return { saleUnits, amountRs };
+  }, [rows]);
 
   /** Sheet-style TOTAL row for the active tab (across ALL items, like the paper). */
   const columnTotals = useMemo(() => {
     if (tab === 'amount') {
-      const amount = Object.values(rows).reduce((sum, row) => sum + row.amountRs, 0);
-      return { sizes: null, amount };
+      return { sizes: null, amount: draftSummary.amountRs };
     }
     const totals = { 1000: 0, 750: 0, 180: 0, 90: 0, 60: 0, 30: 0 } as Record<BottleSize, number>;
     for (const row of Object.values(rows)) {
@@ -95,7 +159,7 @@ export function RegisterScreen() {
       }
     }
     return { sizes: totals, amount: null };
-  }, [rows, tab]);
+  }, [rows, tab, draftSummary.amountRs]);
 
   // Stable callbacks via getState() so RegisterRow memoization holds.
   const handleSetCell = useCallback(
@@ -134,24 +198,64 @@ export function RegisterScreen() {
     }
   }, [showSnackbar]);
 
+  const toggleCategory = useCallback((id: string) => {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
   const renderItem = useCallback(
-    ({ item }: { item: LiquorItem }) => (
-      <RegisterRow
-        item={item}
-        tab={tab}
-        draft={rows[item.id]}
-        modified={touched[item.id] === true}
-        onSetCell={handleSetCell}
-        onSetAmount={handleSetAmount}
-      />
-    ),
-    [rows, touched, tab, handleSetCell, handleSetAmount],
+    ({ item: entry }: { item: ListEntry }) => {
+      if (entry.kind === 'header') {
+        const Chevron = entry.collapsed ? ChevronRight : ChevronDown;
+        return (
+          <Pressable
+            onPress={() => toggleCategory(entry.category.id)}
+            accessibilityRole="button"
+            accessibilityLabel={`${entry.category.name}, ${entry.count} items, ${entry.collapsed ? 'collapsed' : 'expanded'}`}
+            style={[styles.sectionHeader, { paddingVertical: theme.spacing.sm, gap: theme.spacing.xs }]}>
+            <Chevron size={15} color={theme.colors.textTertiary} strokeWidth={2} />
+            <AppText variant="caption" color="textSecondary" style={styles.sectionTitle}>
+              {entry.category.name.toUpperCase()}
+            </AppText>
+            <AppText variant="caption" color="textTertiary">
+              {entry.count}
+            </AppText>
+          </Pressable>
+        );
+      }
+      return (
+        <RegisterRow
+          item={entry.item}
+          tab={tab}
+          draft={rows[entry.item.id]}
+          modified={touched[entry.item.id] === true}
+          onSetCell={handleSetCell}
+          onSetAmount={handleSetAmount}
+        />
+      );
+    },
+    [rows, touched, tab, handleSetCell, handleSetAmount, toggleCategory, theme],
   );
 
   if (status === 'loading' || status === 'idle') {
     return (
-      <SafeAreaView style={[styles.fill, styles.center, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <SafeAreaView
+        edges={['top', 'left', 'right']}
+        style={[styles.fill, { backgroundColor: theme.colors.background }]}>
+        <View
+          style={[
+            styles.content,
+            { maxWidth: theme.layout.maxContentWidth, paddingHorizontal: theme.layout.screenPaddingHorizontal },
+          ]}>
+          <RegisterSkeleton />
+        </View>
       </SafeAreaView>
     );
   }
@@ -160,7 +264,7 @@ export function RegisterScreen() {
     return (
       <SafeAreaView style={[styles.fill, styles.center, { backgroundColor: theme.colors.background }]}>
         <EmptyState
-          icon="cloud-offline-outline"
+          icon={CloudOff}
           title="Couldn't load the catalog"
           message="Something went wrong while loading your liquor list."
           actionLabel="Retry"
@@ -179,7 +283,7 @@ export function RegisterScreen() {
           styles.content,
           { maxWidth: theme.layout.maxContentWidth, paddingHorizontal: theme.layout.screenPaddingHorizontal },
         ]}>
-        {/* Sticky header: title, search, filters, ledger tabs, toolbar */}
+        {/* Sticky header: title, search, filters, ledger tabs, summary */}
         <View style={{ gap: theme.spacing.sm, paddingBottom: theme.spacing.sm }}>
           <View style={styles.titleRow}>
             <AppText variant="headline">Register</AppText>
@@ -215,52 +319,47 @@ export function RegisterScreen() {
             </View>
           </ScrollView>
 
-          <View style={[styles.toolbar, { gap: theme.spacing.sm }]}>
-            <AppText variant="caption" color="textSecondary" style={styles.toolbarCount}>
-              {tab === 'total' || tab === 'sale'
-                ? 'Calculated automatically'
-                : touchedCount > 0
-                  ? `${touchedCount} rows edited`
-                  : 'Fill in the counts'}
-            </AppText>
-            <AppButton
-              label="Undo"
-              icon="arrow-undo-outline"
-              variant="ghost"
-              size="sm"
-              onPress={handleUndo}
-              disabled={undoDepth === 0}
-            />
-            <AppButton
-              label="Reset"
-              variant="ghost"
-              size="sm"
-              onPress={handleReset}
-              disabled={touchedCount === 0}
-            />
-            <AppButton
-              label="Save"
-              icon="checkmark"
-              size="sm"
-              onPress={() => void handleSave()}
-              disabled={touchedCount === 0}
-              loading={saving}
-            />
+          {/* Sticky live summary */}
+          <View
+            style={[
+              styles.summaryBar,
+              {
+                backgroundColor: theme.colors.surface,
+                borderRadius: theme.radius.md,
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: theme.colors.border,
+                paddingHorizontal: theme.spacing.md,
+                paddingVertical: theme.spacing.xs,
+                gap: theme.spacing.sm,
+              },
+            ]}>
+            <View style={styles.summaryText}>
+              <AppText variant="caption" color="textSecondary">
+                {tab === 'total' || tab === 'sale'
+                  ? 'Calculated automatically'
+                  : touchedCount > 0
+                    ? `${touchedCount} rows · ${draftSummary.saleUnits} sold · ${formatRupees(draftSummary.amountRs)}`
+                    : 'Fill in today’s counts'}
+              </AppText>
+            </View>
+            <IconButton icon={Undo2} label="Undo last change" onPress={handleUndo} disabled={undoDepth === 0} />
+            <IconButton icon={RotateCcw} label="Reset all rows" onPress={handleReset} disabled={touchedCount === 0} />
           </View>
 
           <SizeHeader tab={tab} />
         </View>
 
         <FlashList
-          data={filtered}
+          data={listData}
           renderItem={renderItem}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(entry) => (entry.kind === 'header' ? `h-${entry.category.id}` : entry.item.id)}
+          getItemType={(entry) => entry.kind}
           extraData={[rows, touched, tab]}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: theme.spacing.huge }}
+          contentContainerStyle={{ paddingBottom: 120 }}
           ListEmptyComponent={
             <EmptyState
-              icon="wine-outline"
+              icon={Wine}
               title="No items match"
               message="Try a different search term or category filter."
             />
@@ -291,13 +390,20 @@ export function RegisterScreen() {
                 </View>
               ) : (
                 <AppText variant="bodyStrong" color="primary">
-                  ₹ {columnTotals.amount?.toLocaleString('en-IN') ?? 0}
+                  {formatRupees(columnTotals.amount ?? 0)}
                 </AppText>
               )}
             </View>
           }
         />
       </View>
+
+      {/* Floating save — appears only when there is something to save */}
+      {touchedCount > 0 ? (
+        <View style={[styles.fabContainer, { bottom: theme.spacing.lg, right: theme.spacing.lg }]}>
+          <Fab icon={Check} label="Save register" onPress={() => void handleSave()} loading={saving} />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -323,12 +429,19 @@ const styles = StyleSheet.create({
   chipRow: {
     flexDirection: 'row',
   },
-  toolbar: {
+  summaryBar: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  toolbarCount: {
+  summaryText: {
     flex: 1,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    letterSpacing: 1,
   },
   totalRow: {
     flexDirection: 'row',
@@ -343,5 +456,8 @@ const styles = StyleSheet.create({
   totalCell: {
     width: 40,
     textAlign: 'center',
+  },
+  fabContainer: {
+    position: 'absolute',
   },
 });

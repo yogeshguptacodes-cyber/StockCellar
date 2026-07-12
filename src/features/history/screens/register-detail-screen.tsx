@@ -1,6 +1,7 @@
-import { ScrollView, StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { AlertCircle, Download, Trash2 } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { useHistoryStore } from '../store/history-store';
 
@@ -73,7 +74,7 @@ export function RegisterDetailScreen() {
     return (
       <Screen>
         <EmptyState
-          icon="alert-circle-outline"
+          icon={AlertCircle}
           title="Register not found"
           message="It may have been deleted."
           actionLabel="Back to history"
@@ -124,14 +125,14 @@ export function RegisterDetailScreen() {
         <View style={[styles.actions, { gap: theme.spacing.md }]}>
           <AppButton
             label="Export"
-            icon="download-outline"
+            icon={Download}
             onPress={() => void handleExport()}
             loading={exporting}
             style={styles.actionButton}
           />
           <AppButton
             label="Delete"
-            icon="trash-outline"
+            icon={Trash2}
             variant="danger"
             onPress={() => void handleDelete()}
             style={styles.actionButton}
