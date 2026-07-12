@@ -41,6 +41,13 @@ interface GeminiResponse {
   candidates?: readonly {
     content?: { parts?: readonly { text?: string }[] };
   }[];
+  /** Exact billing counts returned by the API — logged per scan for pricing. */
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    thoughtsTokenCount?: number;
+    totalTokenCount?: number;
+  };
 }
 
 function parseSizes(value: unknown): ExtractedSizes | undefined {
@@ -127,6 +134,17 @@ export class GeminiExtractionService implements InventoryExtractionService {
     }
 
     const payload = (await response.json()) as GeminiResponse;
+
+    if (payload.usageMetadata) {
+      // Per-scan cost telemetry — the basis for customer pricing.
+      this.log.info('Gemini token usage', {
+        inputTokens: payload.usageMetadata.promptTokenCount ?? 0,
+        outputTokens: payload.usageMetadata.candidatesTokenCount ?? 0,
+        thinkingTokens: payload.usageMetadata.thoughtsTokenCount ?? 0,
+        totalTokens: payload.usageMetadata.totalTokenCount ?? 0,
+      });
+    }
+
     const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) {
       throw new UnknownError('Extraction service returned an empty response');
