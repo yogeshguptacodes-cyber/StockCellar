@@ -53,15 +53,14 @@ export function ScannerScreen() {
       const picked = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: IMAGE_QUALITY,
-        base64: true,
       });
       const asset = picked.assets?.[0];
       if (!picked.canceled && asset) {
         useScannerStore.getState().setImage(
           {
             uri: asset.uri,
-            ...(asset.base64 ? { base64: asset.base64 } : {}),
             ...(asset.mimeType ? { mimeType: asset.mimeType } : {}),
+            ...(asset.width ? { width: asset.width } : {}),
           },
           'gallery',
         );
@@ -81,15 +80,14 @@ export function ScannerScreen() {
       }
       const captured = await ImagePicker.launchCameraAsync({
         quality: IMAGE_QUALITY,
-        base64: true,
       });
       const asset = captured.assets?.[0];
       if (!captured.canceled && asset) {
         useScannerStore.getState().setImage(
           {
             uri: asset.uri,
-            ...(asset.base64 ? { base64: asset.base64 } : {}),
             ...(asset.mimeType ? { mimeType: asset.mimeType } : {}),
+            ...(asset.width ? { width: asset.width } : {}),
           },
           'camera',
         );
@@ -255,8 +253,8 @@ export function ScannerScreen() {
                           {row.itemName}
                         </AppText>
                         <AppText variant="caption" color="textSecondary">
-                          Opening {units(row.opening)} · Received {units(row.received)} · Balance{' '}
-                          {units(row.balance)}
+                          Opening {units(row.opening)} · Received {units(row.received)} · Sale{' '}
+                          {units(row.sale)}
                           {typeof row.amountRs === 'number' ? ` · ${formatRupees(row.amountRs)}` : ''}
                         </AppText>
                         {row.confidence < LOW_CONFIDENCE ? (

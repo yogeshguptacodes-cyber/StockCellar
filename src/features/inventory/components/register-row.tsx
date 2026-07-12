@@ -6,7 +6,7 @@ import type { RegisterTab } from '../types';
 
 import {
   BOTTLE_SIZES,
-  rowSale,
+  rowBalance,
   rowTotal,
   type BottleSize,
   type EditableStockField,
@@ -54,14 +54,14 @@ export const RegisterRow = memo(function RegisterRow({
   const row = draft ?? emptyDraftRow();
 
   const editableField: EditableStockField | null =
-    !readOnly && (tab === 'opening' || tab === 'received' || tab === 'balance') ? tab : null;
+    !readOnly && (tab === 'opening' || tab === 'received' || tab === 'sale') ? tab : null;
 
   let computed: SizeQuantities | null = null;
   if (tab === 'total') {
     computed = rowTotal(row);
-  } else if (tab === 'sale') {
-    computed = rowSale(row);
-  } else if (readOnly && (tab === 'opening' || tab === 'received' || tab === 'balance')) {
+  } else if (tab === 'balance') {
+    computed = rowBalance(row);
+  } else if (readOnly && (tab === 'opening' || tab === 'received' || tab === 'sale')) {
     computed = row[tab];
   }
 
@@ -132,7 +132,7 @@ export const RegisterRow = memo(function RegisterRow({
               <View key={size} style={[styles.cell, { width: CELL_WIDTH, height: CELL_HEIGHT }]}>
                 <AppText
                   variant="label"
-                  color={value > 0 ? (tab === 'sale' ? 'primary' : 'textPrimary') : 'textTertiary'}>
+                  color={value > 0 ? (tab === 'balance' ? 'primary' : 'textPrimary') : 'textTertiary'}>
                   {value > 0 ? String(value) : '·'}
                 </AppText>
               </View>

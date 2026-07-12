@@ -24,7 +24,7 @@ export interface ExtractedRegisterRow {
   readonly itemName: string;
   readonly opening?: ExtractedSizes;
   readonly received?: ExtractedSizes;
-  readonly balance?: ExtractedSizes;
+  readonly sale?: ExtractedSizes;
   /** Sale value in rupees, when legible. */
   readonly amountRs?: number;
   /** Confidence in [0, 1]; the UI flags low-confidence rows. */

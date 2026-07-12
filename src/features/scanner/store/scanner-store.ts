@@ -4,23 +4,28 @@ import { container } from '@/core/di/container';
 import { normalizeError } from '@/core/errors';
 import { createLogger } from '@/core/logger';
 import { useRegisterStore } from '@/features/inventory/store/register-store';
-import type {
-  ExtractionImage,
-  ExtractionResult,
-} from '@/services/extraction/inventory-extraction-service';
+import { prepareImageForExtraction } from '@/features/scanner/utils/prepare-image';
+import type { ExtractionResult } from '@/services/extraction/inventory-extraction-service';
 
 const log = createLogger('scanner:store');
+
+/** A photo selected from the camera or gallery, before downscaling. */
+export interface PickedImage {
+  readonly uri: string;
+  readonly mimeType?: string;
+  readonly width?: number;
+}
 
 /** Scanner flow state machine. */
 export type ScannerPhase = 'idle' | 'preview' | 'extracting' | 'review';
 
 interface ScannerState {
   phase: ScannerPhase;
-  image: ExtractionImage | null;
+  image: PickedImage | null;
   result: ExtractionResult | null;
   errorMessage: string | null;
 
-  setImage: (image: ExtractionImage, source: 'camera' | 'gallery') => void;
+  setImage: (image: PickedImage, source: 'camera' | 'gallery') => void;
   extract: () => Promise<void>;
   reset: () => void;
   /** Called after rows are applied to the register draft. */
@@ -54,7 +59,11 @@ export const useScannerStore = create<ScannerState>()((set, get) => ({
         await useRegisterStore.getState().initialize();
       }
       const knownItemNames = useRegisterStore.getState().catalog.map((item) => item.name);
-      const result = await container.extractionService.extractFromImage(image, { knownItemNames });
+
+      // Downscale before upload — big photos time out and cost more tokens.
+      const prepared = await prepareImageForExtraction(image.uri, image.width);
+
+      const result = await container.extractionService.extractFromImage(prepared, { knownItemNames });
       container.analytics.track({
         name: 'ai_scan_completed',
         payload: { rowCount: result.rows.length },

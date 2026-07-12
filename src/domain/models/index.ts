@@ -4,7 +4,7 @@ export {
   BOTTLE_SIZES,
   createSizeQuantities,
   hasAnyUnits,
-  rowSale,
+  rowBalance,
   rowTotal,
   subtractSizesClamped,
   summarizeRegister,

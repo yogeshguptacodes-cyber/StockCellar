@@ -31,7 +31,7 @@ export interface QuantityPadProps {
 const FIELD_LABEL: Record<QuantityPadTarget['field'], string> = {
   opening: 'Opening stock',
   received: 'Stock received',
-  balance: 'Balance stock',
+  sale: 'Sale',
   amount: 'Sale amount',
 };
 

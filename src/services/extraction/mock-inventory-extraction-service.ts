@@ -38,7 +38,7 @@ export class MockInventoryExtractionService implements InventoryExtractionServic
       itemName: item.name,
       opening: randomSizes(20),
       received: randomSizes(12),
-      balance: randomSizes(15),
+      sale: randomSizes(15),
       amountRs: Math.random() > 0.4 ? (1 + Math.floor(Math.random() * 40)) * 100 : 0,
       confidence: Math.round((0.7 + Math.random() * 0.29) * 100) / 100,
     }));

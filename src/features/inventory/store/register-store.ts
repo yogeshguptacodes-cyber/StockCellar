@@ -34,7 +34,7 @@ const MAX_UNDO_STEPS = 50;
 export interface DraftRow {
   readonly opening: SizeQuantities;
   readonly received: SizeQuantities;
-  readonly balance: SizeQuantities;
+  readonly sale: SizeQuantities;
   readonly amountRs: number;
 }
 
@@ -42,7 +42,7 @@ export function emptyDraftRow(): DraftRow {
   return {
     opening: createSizeQuantities(),
     received: createSizeQuantities(),
-    balance: createSizeQuantities(),
+    sale: createSizeQuantities(),
     amountRs: 0,
   };
 }
@@ -93,7 +93,7 @@ function rowHasActivity(row: DraftRow): boolean {
   return (
     hasAnyUnits(row.opening) ||
     hasAnyUnits(row.received) ||
-    hasAnyUnits(row.balance) ||
+    hasAnyUnits(row.sale) ||
     row.amountRs > 0
   );
 }
@@ -188,7 +188,7 @@ export const useRegisterStore = create<RegisterState>()((set, get) => ({
       matched += 1;
       const current = nextRows[item.id] ?? emptyDraftRow();
 
-      const fields: readonly EditableStockField[] = ['opening', 'received', 'balance'];
+      const fields: readonly EditableStockField[] = ['opening', 'received', 'sale'];
       const updates: Partial<Record<EditableStockField, SizeQuantities>> = {};
       for (const field of fields) {
         const extractedSizes = extracted[field];
@@ -252,7 +252,7 @@ export const useRegisterStore = create<RegisterState>()((set, get) => ({
     const { rows, undoStack } = get();
     const batch: UndoCell[] = [];
     for (const [itemId, row] of Object.entries(rows)) {
-      for (const field of ['opening', 'received', 'balance'] as const) {
+      for (const field of ['opening', 'received', 'sale'] as const) {
         for (const size of BOTTLE_SIZES) {
           if (row[field][size] !== 0) {
             batch.push({ itemId, field, size, previous: row[field][size] });
@@ -282,7 +282,7 @@ export const useRegisterStore = create<RegisterState>()((set, get) => ({
         itemId,
         opening: row.opening,
         received: row.received,
-        balance: row.balance,
+        sale: row.sale,
         amountRs: row.amountRs,
       }));
     if (registerRows.length === 0) {

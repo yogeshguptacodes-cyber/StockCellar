@@ -21,14 +21,17 @@ Sheet structure:
 - Every stock group has SIX size sub-columns in ml: 1000, 750, 180, 90, 60, 30.
 - Cells are handwritten counts; blank cells mean zero.
 
-Extract ONLY the handwritten data. Do NOT extract TOTAL STOCK or SALE (they are derived).
+Read ONLY these three stock groups plus the amount: OPENING STOCK, STOCK
+RECEIVED, SALE, and AMOUNT. Do NOT read TOTAL STOCK or BALANCE STOCK — those
+are calculated later (total = opening + received; balance = total − sale).
+Ignoring those two columns keeps the response small and fast.
 
 Return a JSON array. One object per row that has ANY handwritten value:
 {
   "name": "liquor name exactly as printed/written",
   "opening":  { "1000": n, "750": n, "180": n, "90": n, "60": n, "30": n },
   "received": { ... },
-  "balance":  { ... },
+  "sale":     { ... },
   "amount": n,
   "confidence": 0.0-1.0
 }
@@ -228,19 +231,19 @@ export class GeminiExtractionService implements InventoryExtractionService {
       }
       const opening = parseSizes(record.opening);
       const received = parseSizes(record.received);
-      const balance = parseSizes(record.balance);
+      const sale = parseSizes(record.sale);
       const amountRs =
         typeof record.amount === 'number' && record.amount > 0
           ? Math.trunc(record.amount)
           : undefined;
-      if (!opening && !received && !balance && amountRs === undefined) {
+      if (!opening && !received && !sale && amountRs === undefined) {
         continue;
       }
       rows.push({
         itemName: name,
         ...(opening ? { opening } : {}),
         ...(received ? { received } : {}),
-        ...(balance ? { balance } : {}),
+        ...(sale ? { sale } : {}),
         ...(amountRs !== undefined ? { amountRs } : {}),
         confidence:
           typeof record.confidence === 'number'

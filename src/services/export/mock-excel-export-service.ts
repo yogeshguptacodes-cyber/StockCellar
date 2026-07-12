@@ -3,7 +3,7 @@ import type { ExportResult, InventoryExportService } from './export-service';
 import { createLogger } from '@/core/logger';
 import {
   BOTTLE_SIZES,
-  rowSale,
+  rowBalance,
   rowTotal,
   type LiquorItem,
   type SizeQuantities,
@@ -47,8 +47,8 @@ export class MockExcelExportService implements InventoryExportService {
         ...sizeColumns(row.opening),
         ...sizeColumns(row.received),
         ...sizeColumns(rowTotal(row)),
-        ...sizeColumns(row.balance),
-        ...sizeColumns(rowSale(row)),
+        ...sizeColumns(rowBalance(row)),
+        ...sizeColumns(row.sale),
         csvField(row.amountRs),
       ].join(',');
     });

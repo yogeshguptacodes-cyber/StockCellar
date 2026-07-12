@@ -3,10 +3,14 @@
  * each liquor item has quantities in six bottle sizes across ledger groups
  * (opening, received, total, balance, sale, amount).
  *
- * Business rules (as on the paper sheet):
+ * Business rules:
  *   total   = opening + received        (computed)
- *   sale    = total − balance           (computed, clamped ≥ 0)
+ *   balance = total − sale              (computed, clamped ≥ 0)
  *   amount  = sale value in ₹           (entered per row)
+ *
+ * Opening, Received and Sale are the numbers entered/scanned; Total and
+ * Balance are always derived (fewer cells to read = faster, more accurate
+ * scans, and no arithmetic mistakes).
  */
 
 /** Standard Indian excise bottle sizes, in ml — the sheet's column order. */
@@ -15,8 +19,8 @@ export type BottleSize = (typeof BOTTLE_SIZES)[number];
 
 export type SizeQuantities = Readonly<Record<BottleSize, number>>;
 
-/** Ledger groups the user edits directly; total & sale are derived. */
-export type EditableStockField = 'opening' | 'received' | 'balance';
+/** Ledger groups the user edits directly; total & balance are derived. */
+export type EditableStockField = 'opening' | 'received' | 'sale';
 
 export function createSizeQuantities(): SizeQuantities {
   return { 1000: 0, 750: 0, 180: 0, 90: 0, 60: 0, 30: 0 };
@@ -51,7 +55,7 @@ export interface StockRegisterRow {
   readonly itemId: string;
   readonly opening: SizeQuantities;
   readonly received: SizeQuantities;
-  readonly balance: SizeQuantities;
+  readonly sale: SizeQuantities;
   /** Sale value in rupees, entered per row as on the sheet. */
   readonly amountRs: number;
 }
@@ -72,11 +76,11 @@ export function rowTotal(row: Pick<StockRegisterRow, 'opening' | 'received'>): S
   return addSizes(row.opening, row.received);
 }
 
-/** sale = total − balance, clamped ≥ 0 */
-export function rowSale(
-  row: Pick<StockRegisterRow, 'opening' | 'received' | 'balance'>,
+/** balance = total − sale, clamped ≥ 0 */
+export function rowBalance(
+  row: Pick<StockRegisterRow, 'opening' | 'received' | 'sale'>,
 ): SizeQuantities {
-  return subtractSizesClamped(rowTotal(row), row.balance);
+  return subtractSizesClamped(rowTotal(row), row.sale);
 }
 
 export interface RegisterSummary {
@@ -89,7 +93,7 @@ export function summarizeRegister(register: StockRegister): RegisterSummary {
   let saleUnits = 0;
   let totalAmountRs = 0;
   for (const row of register.rows) {
-    saleUnits += sumUnits(rowSale(row));
+    saleUnits += sumUnits(row.sale);
     totalAmountRs += row.amountRs;
   }
   return { rowCount: register.rows.length, saleUnits, totalAmountRs };

@@ -14,7 +14,7 @@ import { container } from '@/core/di/container';
 import { isAppError } from '@/core/errors';
 import {
   BOTTLE_SIZES,
-  rowSale,
+  rowBalance,
   rowTotal,
   type BottleSize,
   type Category,
@@ -133,9 +133,8 @@ export function RegisterScreen() {
     let saleUnits = 0;
     let amountRs = 0;
     for (const row of Object.values(rows)) {
-      const sale = rowSale(row);
       for (const size of BOTTLE_SIZES) {
-        saleUnits += sale[size];
+        saleUnits += row.sale[size];
       }
       amountRs += row.amountRs;
     }
@@ -152,8 +151,8 @@ export function RegisterScreen() {
       let quantities: SizeQuantities;
       if (tab === 'total') {
         quantities = rowTotal(row);
-      } else if (tab === 'sale') {
-        quantities = rowSale(row);
+      } else if (tab === 'balance') {
+        quantities = rowBalance(row);
       } else {
         quantities = row[tab];
       }
@@ -420,7 +419,7 @@ export function RegisterScreen() {
             ]}>
             <View style={styles.summaryText}>
               <AppText variant="caption" color="textSecondary">
-                {tab === 'total' || tab === 'sale'
+                {tab === 'total' || tab === 'balance'
                   ? 'Calculated automatically'
                   : touchedCount > 0
                     ? `${touchedCount} rows · ${draftSummary.saleUnits} sold · ${formatRupees(draftSummary.amountRs)}`

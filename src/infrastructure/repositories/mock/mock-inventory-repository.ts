@@ -6,7 +6,9 @@ import type { Category, LiquorItem, StockRegister } from '@/domain/models';
 import type { InventoryRepository } from '@/domain/repositories';
 import type { KeyValueStorage } from '@/infrastructure/storage';
 
-const REGISTERS_KEY = 'inventory.registers.v2';
+// v3: register rows store `sale` (balance is now derived). Older v2 rows had
+// an incompatible `balance` field, so a new key starts them fresh.
+const REGISTERS_KEY = 'inventory.registers.v3';
 /** Small artificial latency keeps loading states honest before the real API. */
 const SIMULATED_LATENCY_MS = 150;
 
