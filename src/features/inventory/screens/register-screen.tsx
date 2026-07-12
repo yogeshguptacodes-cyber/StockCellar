@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { QuantityPad, type QuantityPadTarget } from '../components/quantity-pad';
 import { RegisterRow } from '../components/register-row';
 import { SizeHeader } from '../components/size-header';
 import { DEFAULT_BAR_NAME, useRegisterStore } from '../store/register-store';
@@ -17,6 +18,7 @@ import {
   rowTotal,
   type BottleSize,
   type Category,
+  type EditableStockField,
   type LiquorItem,
   type SizeQuantities,
 } from '@/domain/models';
@@ -77,6 +79,7 @@ export function RegisterScreen() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [tab, setTab] = useState<RegisterTab>('opening');
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  const [selection, setSelection] = useState<QuantityPadTarget | null>(null);
 
   useEffect(() => {
     void initialize();
@@ -161,16 +164,84 @@ export function RegisterScreen() {
     return { sizes: totals, amount: null };
   }, [rows, tab, draftSummary.amountRs]);
 
-  // Stable callbacks via getState() so RegisterRow memoization holds.
-  const handleSetCell = useCallback(
-    (itemId: string, field: 'opening' | 'received' | 'balance', size: BottleSize, quantity: number) => {
-      useRegisterStore.getState().setCell(itemId, field, size, quantity);
+  /** Ordered items currently visible — drives the pad's Prev/Next walk. */
+  const visibleItems = useMemo(
+    () => listData.filter((entry) => entry.kind === 'item').map((entry) => entry.item),
+    [listData],
+  );
+
+  // Stable callback so RegisterRow memoization holds.
+  const handleCellPress = useCallback(
+    (item: LiquorItem, field: EditableStockField | 'amount', size: BottleSize | null) => {
+      setSelection({ itemId: item.id, itemName: item.name, field, size });
     },
     [],
   );
-  const handleSetAmount = useCallback((itemId: string, amountRs: number) => {
-    useRegisterStore.getState().setAmount(itemId, amountRs);
-  }, []);
+
+  const selectionValue = useMemo(() => {
+    if (!selection) {
+      return 0;
+    }
+    const row = rows[selection.itemId];
+    if (!row) {
+      return 0;
+    }
+    if (selection.field === 'amount') {
+      return row.amountRs;
+    }
+    return selection.size !== null ? row[selection.field][selection.size] : 0;
+  }, [selection, rows]);
+
+  const handlePadSet = useCallback(
+    (value: number) => {
+      if (!selection) {
+        return;
+      }
+      const store = useRegisterStore.getState();
+      if (selection.field === 'amount') {
+        store.setAmount(selection.itemId, value);
+      } else if (selection.size !== null) {
+        store.setCell(selection.itemId, selection.field, selection.size, value);
+      }
+    },
+    [selection],
+  );
+
+  const handlePadStep = useCallback(
+    (delta: number) => {
+      if (!selection) {
+        return;
+      }
+      const store = useRegisterStore.getState();
+      const row = store.rows[selection.itemId];
+      if (selection.field === 'amount') {
+        store.setAmount(selection.itemId, (row?.amountRs ?? 0) + delta);
+      } else if (selection.size !== null) {
+        const current = row?.[selection.field][selection.size] ?? 0;
+        store.setCell(selection.itemId, selection.field, selection.size, current + delta);
+      }
+    },
+    [selection],
+  );
+
+  const selectionIndex = useMemo(
+    () => (selection ? visibleItems.findIndex((item) => item.id === selection.itemId) : -1),
+    [selection, visibleItems],
+  );
+
+  const moveSelection = useCallback(
+    (direction: 1 | -1) => {
+      if (!selection || selectionIndex < 0) {
+        return;
+      }
+      const next = visibleItems[selectionIndex + direction];
+      if (next) {
+        setSelection({ ...selection, itemId: next.id, itemName: next.name });
+      }
+    },
+    [selection, selectionIndex, visibleItems],
+  );
+
   const handleUndo = useCallback(() => {
     useRegisterStore.getState().undo();
   }, []);
@@ -236,12 +307,18 @@ export function RegisterScreen() {
           tab={tab}
           draft={rows[entry.item.id]}
           modified={touched[entry.item.id] === true}
-          onSetCell={handleSetCell}
-          onSetAmount={handleSetAmount}
+          selectedCell={
+            selection?.itemId === entry.item.id
+              ? selection.field === 'amount'
+                ? 'amount'
+                : selection.size
+              : null
+          }
+          onCellPress={handleCellPress}
         />
       );
     },
-    [rows, touched, tab, handleSetCell, handleSetAmount, toggleCategory, theme],
+    [rows, touched, tab, selection, handleCellPress, toggleCategory, theme],
   );
 
   if (status === 'loading' || status === 'idle') {
@@ -314,7 +391,15 @@ export function RegisterScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View style={[styles.chipRow, { gap: theme.spacing.sm }]}>
               {REGISTER_TABS.map((t) => (
-                <AppChip key={t.key} label={t.label} selected={tab === t.key} onPress={() => setTab(t.key)} />
+                <AppChip
+                  key={t.key}
+                  label={t.label}
+                  selected={tab === t.key}
+                  onPress={() => {
+                    setTab(t.key);
+                    setSelection(null);
+                  }}
+                />
               ))}
             </View>
           </ScrollView>
@@ -354,9 +439,9 @@ export function RegisterScreen() {
           renderItem={renderItem}
           keyExtractor={(entry) => (entry.kind === 'header' ? `h-${entry.category.id}` : entry.item.id)}
           getItemType={(entry) => entry.kind}
-          extraData={[rows, touched, tab]}
+          extraData={[rows, touched, tab, selection]}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ paddingBottom: 120 }}
+          contentContainerStyle={{ paddingBottom: selection ? 260 : 120 }}
           ListEmptyComponent={
             <EmptyState
               icon={Wine}
@@ -398,8 +483,29 @@ export function RegisterScreen() {
         />
       </View>
 
+      {/* Quantity pad — owns all cell editing; no OS keyboard needed */}
+      {selection ? (
+        <View
+          style={[
+            styles.padContainer,
+            { bottom: theme.spacing.md, left: theme.spacing.lg, right: theme.spacing.lg },
+          ]}>
+          <QuantityPad
+            target={selection}
+            value={selectionValue}
+            onSet={handlePadSet}
+            onStep={handlePadStep}
+            onPrev={() => moveSelection(-1)}
+            onNext={() => moveSelection(1)}
+            hasPrev={selectionIndex > 0}
+            hasNext={selectionIndex >= 0 && selectionIndex < visibleItems.length - 1}
+            onClose={() => setSelection(null)}
+          />
+        </View>
+      ) : null}
+
       {/* Floating save — appears only when there is something to save */}
-      {touchedCount > 0 ? (
+      {touchedCount > 0 && !selection ? (
         <View style={[styles.fabContainer, { bottom: theme.spacing.lg, right: theme.spacing.lg }]}>
           <Fab icon={Check} label="Save register" onPress={() => void handleSave()} loading={saving} />
         </View>
@@ -458,6 +564,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   fabContainer: {
+    position: 'absolute',
+  },
+  padContainer: {
     position: 'absolute',
   },
 });

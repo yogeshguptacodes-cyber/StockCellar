@@ -1,15 +1,17 @@
 import type {
   ExtractedRegisterRow,
   ExtractedSizes,
+  ExtractionContext,
   ExtractionImage,
   ExtractionResult,
   InventoryExtractionService,
 } from './inventory-extraction-service';
 
-import { NetworkError, UnknownError, ValidationError } from '@/core/errors';
+import { NetworkError, TimeoutError, UnknownError, ValidationError } from '@/core/errors';
 import { createLogger } from '@/core/logger';
 
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
+const REQUEST_TIMEOUT_MS = 90_000;
 
 const EXTRACTION_PROMPT = `You are reading a photograph of an Indian bar daily stock register sheet.
 
@@ -37,9 +39,23 @@ Rules:
 - Skip the TOTAL row at the bottom of the sheet.
 - Return ONLY the JSON array, nothing else.`;
 
+function buildPrompt(context: ExtractionContext | undefined): string {
+  const names = context?.knownItemNames;
+  if (!names || names.length === 0) {
+    return EXTRACTION_PROMPT;
+  }
+  return `${EXTRACTION_PROMPT}
+
+KNOWN CATALOG (this bar's item list). When a sheet row matches one of these,
+return the name EXACTLY as spelled below — treat this list as the OCR
+vocabulary for messy handwriting. Rows genuinely not in this list may still
+be returned with the name as written on the sheet.
+${names.map((name) => `- ${name}`).join('\n')}`;
+}
+
 interface GeminiResponse {
   candidates?: readonly {
-    content?: { parts?: readonly { text?: string }[] };
+    content?: { parts?: readonly { text?: string; thought?: boolean }[] };
   }[];
   /** Exact billing counts returned by the API — logged per scan for pricing. */
   usageMetadata?: {
@@ -86,12 +102,18 @@ export class GeminiExtractionService implements InventoryExtractionService {
     private readonly model: string,
   ) {}
 
-  async extractFromImage(image: ExtractionImage): Promise<ExtractionResult> {
+  async extractFromImage(image: ExtractionImage, context?: ExtractionContext): Promise<ExtractionResult> {
     if (!image.base64) {
       throw new ValidationError('Image data is missing. Please re-select the photo.');
     }
 
-    this.log.info('Gemini extraction started', { model: this.model });
+    this.log.info('Gemini extraction started', {
+      model: this.model,
+      vocabularySize: context?.knownItemNames?.length ?? 0,
+    });
+
+    const abort = new AbortController();
+    const timeoutHandle = setTimeout(() => abort.abort(), REQUEST_TIMEOUT_MS);
 
     let response: Response;
     try {
@@ -104,7 +126,7 @@ export class GeminiExtractionService implements InventoryExtractionService {
             contents: [
               {
                 parts: [
-                  { text: EXTRACTION_PROMPT },
+                  { text: buildPrompt(context) },
                   {
                     inline_data: {
                       mime_type: image.mimeType ?? 'image/jpeg',
@@ -119,16 +141,45 @@ export class GeminiExtractionService implements InventoryExtractionService {
               responseMimeType: 'application/json',
             },
           }),
+          signal: abort.signal,
         },
       );
     } catch (cause) {
-      throw new NetworkError('Could not reach the extraction service', { cause });
+      if (abort.signal.aborted) {
+        throw new TimeoutError('The scan took too long. Please try again.', { cause });
+      }
+      throw new NetworkError('Could not reach the AI service. Check your internet connection.', {
+        cause,
+      });
+    } finally {
+      clearTimeout(timeoutHandle);
     }
 
     if (!response.ok) {
       const body = await response.text().catch(() => '');
       this.log.error('Gemini API error', undefined, { status: response.status, body: body.slice(0, 500) });
-      throw new NetworkError(`Extraction service error (HTTP ${response.status})`, {
+      // Map the common billing/auth failures to messages the user can act on.
+      if (response.status === 429) {
+        throw new NetworkError(
+          body.includes('credits are depleted')
+            ? 'Your Gemini credits are used up. Top up at ai.studio/projects, then scan again.'
+            : 'Scan limit reached for now. Wait a minute and try again.',
+          { context: { status: 429 } },
+        );
+      }
+      if (response.status === 401 || response.status === 403) {
+        throw new NetworkError(
+          'The Gemini API key was rejected. Check EXPO_PUBLIC_GEMINI_API_KEY in .env and restart the app.',
+          { context: { status: response.status } },
+        );
+      }
+      if (response.status === 404) {
+        throw new NetworkError(
+          `Model "${this.model}" is not available for this key. Change EXPO_PUBLIC_GEMINI_MODEL in .env.`,
+          { context: { status: 404 } },
+        );
+      }
+      throw new NetworkError(`AI service error (HTTP ${response.status}). Please try again.`, {
         context: { status: response.status },
       });
     }
@@ -145,7 +196,12 @@ export class GeminiExtractionService implements InventoryExtractionService {
       });
     }
 
-    const text = payload.candidates?.[0]?.content?.parts?.[0]?.text;
+    // Thinking models may emit thought parts before the answer — join only
+    // the real text parts.
+    const text = (payload.candidates?.[0]?.content?.parts ?? [])
+      .filter((part) => part.thought !== true && typeof part.text === 'string')
+      .map((part) => part.text)
+      .join('');
     if (!text) {
       throw new UnknownError('Extraction service returned an empty response');
     }

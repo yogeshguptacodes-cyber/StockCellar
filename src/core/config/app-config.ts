@@ -41,5 +41,5 @@ export const appConfig: AppConfig = Object.freeze({
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? '',
   analyticsEnabled: (process.env.EXPO_PUBLIC_ANALYTICS_ENABLED ?? 'true') !== 'false',
   geminiApiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '',
-  geminiModel: process.env.EXPO_PUBLIC_GEMINI_MODEL ?? 'gemini-2.5-flash',
+  geminiModel: process.env.EXPO_PUBLIC_GEMINI_MODEL ?? 'gemini-3.5-flash',
 });

@@ -37,6 +37,14 @@ export interface ExtractionResult {
   readonly processedAt: number;
 }
 
+export interface ExtractionContext {
+  /**
+   * The bar's catalog names, given to the model as a matching vocabulary —
+   * dramatically improves handwriting recognition of known brands.
+   */
+  readonly knownItemNames?: readonly string[];
+}
+
 export interface InventoryExtractionService {
-  extractFromImage(image: ExtractionImage): Promise<ExtractionResult>;
+  extractFromImage(image: ExtractionImage, context?: ExtractionContext): Promise<ExtractionResult>;
 }

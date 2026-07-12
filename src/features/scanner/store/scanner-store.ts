@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { container } from '@/core/di/container';
 import { normalizeError } from '@/core/errors';
 import { createLogger } from '@/core/logger';
+import { useRegisterStore } from '@/features/inventory/store/register-store';
 import type {
   ExtractionImage,
   ExtractionResult,
@@ -48,7 +49,12 @@ export const useScannerStore = create<ScannerState>()((set, get) => ({
       payload: { provider: container.extractionProvider },
     });
     try {
-      const result = await container.extractionService.extractFromImage(image);
+      // Ensure the catalog is loaded — its names are the model's OCR vocabulary.
+      if (useRegisterStore.getState().status !== 'ready') {
+        await useRegisterStore.getState().initialize();
+      }
+      const knownItemNames = useRegisterStore.getState().catalog.map((item) => item.name);
+      const result = await container.extractionService.extractFromImage(image, { knownItemNames });
       container.analytics.track({
         name: 'ai_scan_completed',
         payload: { rowCount: result.rows.length },
@@ -61,12 +67,17 @@ export const useScannerStore = create<ScannerState>()((set, get) => ({
         name: 'error_occurred',
         payload: { code: normalized.code, message: normalized.message },
       });
+      // Network/timeout/validation errors carry user-actionable messages
+      // (credits depleted, bad key, unavailable model, …) — show them as-is.
+      const actionable =
+        normalized.code === 'NETWORK' ||
+        normalized.code === 'TIMEOUT' ||
+        normalized.code === 'VALIDATION';
       set({
         phase: 'preview',
-        errorMessage:
-          normalized.code === 'NETWORK'
-            ? 'Could not reach the extraction service. Check your connection and try again.'
-            : 'Could not read the sheet. Please try again.',
+        errorMessage: actionable
+          ? normalized.message
+          : 'Could not read the sheet. Please try again.',
       });
     }
   },

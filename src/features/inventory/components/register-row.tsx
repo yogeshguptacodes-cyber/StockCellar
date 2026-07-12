@@ -1,5 +1,5 @@
-import { memo, useCallback, useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { memo } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import { emptyDraftRow, type DraftRow } from '../store/register-store';
 import type { RegisterTab } from '../types';
@@ -22,86 +22,33 @@ export const CELL_GAP = 4;
 export const AMOUNT_INPUT_WIDTH = 96;
 const CELL_HEIGHT = 34;
 
+/** Which cell of THIS row is targeted by the quantity pad. */
+export type SelectedCell = BottleSize | 'amount' | null;
+
 export interface RegisterRowProps {
   item: LiquorItem;
   tab: RegisterTab;
   draft: DraftRow | undefined;
   modified: boolean;
-  /** Viewer mode (history detail): render every cell as text. */
+  selectedCell?: SelectedCell;
+  /** Viewer mode (history detail): render every cell as plain text. */
   readOnly?: boolean;
-  onSetCell?: (itemId: string, field: EditableStockField, size: BottleSize, quantity: number) => void;
-  onSetAmount?: (itemId: string, amountRs: number) => void;
+  onCellPress?: (item: LiquorItem, field: EditableStockField | 'amount', size: BottleSize | null) => void;
 }
 
-function parseDigits(text: string): number {
-  const digits = text.replace(/[^0-9]/g, '');
-  return digits === '' ? 0 : Number.parseInt(digits, 10);
-}
-
-interface EditableCellProps {
-  value: number;
-  width: number;
-  maxLength: number;
-  accessibilityLabel: string;
-  emphasize?: boolean;
-  onCommit: (value: number) => void;
-}
-
-/** One numeric grid cell with a focus ring — quiet at rest, obvious when active. */
-const EditableCell = memo(function EditableCell({
-  value,
-  width,
-  maxLength,
-  accessibilityLabel,
-  emphasize = false,
-  onCommit,
-}: EditableCellProps) {
-  const theme = useTheme();
-  const [focused, setFocused] = useState(false);
-
-  return (
-    <TextInput
-      value={value === 0 ? '' : String(value)}
-      onChangeText={(text) => onCommit(parseDigits(text))}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
-      placeholder="·"
-      placeholderTextColor={theme.colors.textTertiary}
-      keyboardType="number-pad"
-      selectTextOnFocus
-      maxLength={maxLength}
-      accessibilityLabel={accessibilityLabel}
-      style={[
-        styles.cellText,
-        theme.typography.label,
-        {
-          width,
-          height: CELL_HEIGHT,
-          borderRadius: theme.radius.xs,
-          borderWidth: 1,
-          borderColor: focused ? theme.colors.primary : 'transparent',
-          backgroundColor: focused ? theme.colors.surface : theme.colors.surfaceMuted,
-          color:
-            value > 0
-              ? emphasize
-                ? theme.colors.primary
-                : theme.colors.textPrimary
-              : theme.colors.textTertiary,
-        },
-      ]}
-    />
-  );
-});
-
-/** One sheet row: item name + six size cells (or the amount field). Memoized. */
+/**
+ * One sheet row: item name + six size cells (or the amount cell).
+ * Cells never open the OS keyboard — tapping targets the QuantityPad,
+ * which owns all editing. Memoized for FlashList.
+ */
 export const RegisterRow = memo(function RegisterRow({
   item,
   tab,
   draft,
   modified,
+  selectedCell = null,
   readOnly = false,
-  onSetCell,
-  onSetAmount,
+  onCellPress,
 }: RegisterRowProps) {
   const theme = useTheme();
   const row = draft ?? emptyDraftRow();
@@ -118,10 +65,13 @@ export const RegisterRow = memo(function RegisterRow({
     computed = row[tab];
   }
 
-  const handleAmountCommit = useCallback(
-    (value: number) => onSetAmount?.(item.id, value),
-    [item.id, onSetAmount],
-  );
+  const cellFrame = (selected: boolean) => ({
+    height: CELL_HEIGHT,
+    borderRadius: theme.radius.xs,
+    borderWidth: 1,
+    borderColor: selected ? theme.colors.primary : 'transparent',
+    backgroundColor: selected ? theme.colors.surface : theme.colors.surfaceMuted,
+  });
 
   return (
     <View
@@ -145,37 +95,41 @@ export const RegisterRow = memo(function RegisterRow({
           <AppText
             variant="label"
             color={row.amountRs > 0 ? 'primary' : 'textTertiary'}
-            style={[styles.cellText, { width: AMOUNT_INPUT_WIDTH }]}>
+            style={[styles.centerText, { width: AMOUNT_INPUT_WIDTH }]}>
             {row.amountRs > 0 ? row.amountRs.toLocaleString('en-IN') : '·'}
           </AppText>
         ) : (
-          <EditableCell
-            value={row.amountRs}
-            width={AMOUNT_INPUT_WIDTH}
-            maxLength={8}
-            accessibilityLabel={`Sale amount for ${item.name}`}
-            emphasize
-            onCommit={handleAmountCommit}
-          />
+          <Pressable
+            onPress={() => onCellPress?.(item, 'amount', null)}
+            accessibilityRole="button"
+            accessibilityLabel={`Sale amount for ${item.name}, currently ${row.amountRs}`}
+            style={[styles.cell, { width: AMOUNT_INPUT_WIDTH }, cellFrame(selectedCell === 'amount')]}>
+            <AppText variant="label" color={row.amountRs > 0 ? 'primary' : 'textTertiary'}>
+              {row.amountRs > 0 ? row.amountRs.toLocaleString('en-IN') : '·'}
+            </AppText>
+          </Pressable>
         )
       ) : (
         <View style={[styles.cells, { gap: CELL_GAP }]}>
           {BOTTLE_SIZES.map((size) => {
             if (editableField) {
+              const value = row[editableField][size];
               return (
-                <EditableCell
+                <Pressable
                   key={size}
-                  value={row[editableField][size]}
-                  width={CELL_WIDTH}
-                  maxLength={4}
-                  accessibilityLabel={`${item.name} ${editableField} ${size} ml`}
-                  onCommit={(value) => onSetCell?.(item.id, editableField, size, value)}
-                />
+                  onPress={() => onCellPress?.(item, editableField, size)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.name} ${editableField} ${size} ml, currently ${value}`}
+                  style={[styles.cell, { width: CELL_WIDTH }, cellFrame(selectedCell === size)]}>
+                  <AppText variant="label" color={value > 0 ? 'textPrimary' : 'textTertiary'}>
+                    {value > 0 ? String(value) : '·'}
+                  </AppText>
+                </Pressable>
               );
             }
             const value = computed ? computed[size] : 0;
             return (
-              <View key={size} style={[styles.computedCell, { width: CELL_WIDTH, height: CELL_HEIGHT }]}>
+              <View key={size} style={[styles.cell, { width: CELL_WIDTH, height: CELL_HEIGHT }]}>
                 <AppText
                   variant="label"
                   color={value > 0 ? (tab === 'sale' ? 'primary' : 'textPrimary') : 'textTertiary'}>
@@ -202,13 +156,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  cellText: {
-    textAlign: 'center',
-    paddingVertical: 0,
-    paddingHorizontal: 2,
-  },
-  computedCell: {
+  cell: {
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  centerText: {
+    textAlign: 'center',
   },
 });

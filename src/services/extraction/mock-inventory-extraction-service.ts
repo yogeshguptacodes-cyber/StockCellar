@@ -1,5 +1,6 @@
 import type {
   ExtractedRegisterRow,
+  ExtractionContext,
   ExtractionImage,
   ExtractionResult,
   InventoryExtractionService,
@@ -27,7 +28,7 @@ function randomSizes(max: number): Record<string, number> {
 export class MockInventoryExtractionService implements InventoryExtractionService {
   private readonly log = createLogger('scanner:mock-extraction');
 
-  async extractFromImage(image: ExtractionImage): Promise<ExtractionResult> {
+  async extractFromImage(image: ExtractionImage, _context?: ExtractionContext): Promise<ExtractionResult> {
     this.log.debug('Mock extraction started', { uri: image.uri });
     await new Promise((resolve) => setTimeout(resolve, SIMULATED_PROCESSING_MS));
 
