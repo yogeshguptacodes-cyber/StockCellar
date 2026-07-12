@@ -1,23 +1,42 @@
 /**
- * AI inventory-sheet extraction contract.
+ * AI register-sheet extraction contract.
  *
- * v1: `MockInventoryExtractionService` returns plausible fake results.
- * v2: a Gemini-backed implementation — same interface, registered in the
- * composition root; the Scanner UI never changes.
+ * Reads a photographed bar stock register (rows = liquor names; column
+ * groups = opening / received / balance / amount, each with the six bottle
+ * sizes) into structured data. Total and sale are derived, never extracted.
+ *
+ * v1 default: `MockInventoryExtractionService`.
+ * With `EXPO_PUBLIC_GEMINI_API_KEY` set: `GeminiExtractionService`.
+ * The Scanner UI is identical for both.
  */
-export interface ExtractedEntry {
-  readonly bottleId: string;
-  readonly quantity: number;
-  /** Model confidence in [0, 1]; the UI can flag low-confidence rows. */
+export interface ExtractionImage {
+  readonly uri: string;
+  /** Base64 payload (no data: prefix). Required by the Gemini implementation. */
+  readonly base64?: string;
+  readonly mimeType?: string;
+}
+
+/** Per-size quantities keyed by size label ("1000", "750", "180", "90", "60", "30"). */
+export type ExtractedSizes = Readonly<Record<string, number>>;
+
+export interface ExtractedRegisterRow {
+  /** Liquor name as written on the sheet. */
+  readonly itemName: string;
+  readonly opening?: ExtractedSizes;
+  readonly received?: ExtractedSizes;
+  readonly balance?: ExtractedSizes;
+  /** Sale value in rupees, when legible. */
+  readonly amountRs?: number;
+  /** Confidence in [0, 1]; the UI flags low-confidence rows. */
   readonly confidence: number;
 }
 
 export interface ExtractionResult {
-  readonly entries: readonly ExtractedEntry[];
+  readonly rows: readonly ExtractedRegisterRow[];
   /** Epoch ms. */
   readonly processedAt: number;
 }
 
 export interface InventoryExtractionService {
-  extractFromImage(imageUri: string): Promise<ExtractionResult>;
+  extractFromImage(image: ExtractionImage): Promise<ExtractionResult>;
 }

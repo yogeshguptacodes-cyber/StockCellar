@@ -11,7 +11,9 @@ export interface AppChipProps {
   onPress: () => void;
 }
 
-/** Filter chip atom — used for category filters. */
+const MIN_HEIGHT = 34;
+
+/** Filter/segment chip — filled when selected, quiet outline otherwise. */
 export const AppChip = memo(function AppChip({ label, selected, onPress }: AppChipProps) {
   const theme = useTheme();
   return (
@@ -23,11 +25,12 @@ export const AppChip = memo(function AppChip({ label, selected, onPress }: AppCh
       style={({ pressed }) => [
         styles.base,
         {
-          backgroundColor: selected ? theme.colors.primary : theme.colors.surfaceMuted,
+          backgroundColor: selected ? theme.colors.primary : theme.colors.surface,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: selected ? theme.colors.primary : theme.colors.borderStrong,
           borderRadius: theme.radius.full,
           paddingHorizontal: theme.spacing.md,
-          paddingVertical: theme.spacing.xs + theme.spacing.xxs,
-          opacity: pressed ? 0.8 : 1,
+          opacity: pressed ? 0.75 : 1,
         },
       ]}>
       <AppText
@@ -41,6 +44,7 @@ export const AppChip = memo(function AppChip({ label, selected, onPress }: AppCh
 
 const styles = StyleSheet.create({
   base: {
+    minHeight: MIN_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,67 +1,75 @@
-import type { Bottle, Category } from '@/domain/models';
+import type { Category, LiquorItem } from '@/domain/models';
 
 /**
- * Seed catalog for v1. Replaced by backend data in v2 — the repository
- * interface hides the difference from the rest of the app.
+ * Seed catalog transcribed from the bar's physical register sheet (PS-3).
+ * Row order mirrors the sheet so counting flows top-to-bottom like paper.
+ * Replaced by backend data in v2.
  */
 export const seedCategories: readonly Category[] = [
-  { id: 'cat-red-wine', name: 'Red Wine' },
-  { id: 'cat-white-wine', name: 'White Wine' },
-  { id: 'cat-sparkling', name: 'Sparkling' },
-  { id: 'cat-whiskey', name: 'Whiskey' },
+  { id: 'cat-whisky', name: 'Whisky' },
   { id: 'cat-vodka', name: 'Vodka' },
-  { id: 'cat-gin', name: 'Gin' },
   { id: 'cat-rum', name: 'Rum' },
-  { id: 'cat-tequila', name: 'Tequila' },
-  { id: 'cat-liqueur', name: 'Liqueur' },
-  { id: 'cat-beer', name: 'Beer' },
+  { id: 'cat-other', name: 'Other' },
 ];
 
-export const seedBottles: readonly Bottle[] = [
-  // Red wine
-  { id: 'b-001', name: 'Cabernet Sauvignon Reserve', brand: 'Sula', categoryId: 'cat-red-wine', sizeMl: 750 },
-  { id: 'b-002', name: 'Shiraz', brand: 'Jacob’s Creek', categoryId: 'cat-red-wine', sizeMl: 750 },
-  { id: 'b-003', name: 'Malbec', brand: 'Trapiche', categoryId: 'cat-red-wine', sizeMl: 750 },
-  { id: 'b-004', name: 'Pinot Noir', brand: 'Fratelli', categoryId: 'cat-red-wine', sizeMl: 750 },
-  // White wine
-  { id: 'b-005', name: 'Sauvignon Blanc', brand: 'Sula', categoryId: 'cat-white-wine', sizeMl: 750 },
-  { id: 'b-006', name: 'Chardonnay', brand: 'Grover Zampa', categoryId: 'cat-white-wine', sizeMl: 750 },
-  { id: 'b-007', name: 'Riesling', brand: 'Jacob’s Creek', categoryId: 'cat-white-wine', sizeMl: 750 },
-  // Sparkling
-  { id: 'b-008', name: 'Brut', brand: 'Chandon', categoryId: 'cat-sparkling', sizeMl: 750 },
-  { id: 'b-009', name: 'Prosecco', brand: 'Zonin', categoryId: 'cat-sparkling', sizeMl: 750 },
-  { id: 'b-010', name: 'Brut Rosé', brand: 'Sula', categoryId: 'cat-sparkling', sizeMl: 750 },
-  // Whiskey
-  { id: 'b-011', name: 'Black Label', brand: 'Johnnie Walker', categoryId: 'cat-whiskey', sizeMl: 750 },
-  { id: 'b-012', name: 'Single Malt 12Y', brand: 'Glenfiddich', categoryId: 'cat-whiskey', sizeMl: 700 },
-  { id: 'b-013', name: 'Bourbon', brand: 'Jim Beam', categoryId: 'cat-whiskey', sizeMl: 750 },
-  { id: 'b-014', name: 'Tennessee Whiskey', brand: 'Jack Daniel’s', categoryId: 'cat-whiskey', sizeMl: 1000 },
-  { id: 'b-015', name: 'Blended Scotch', brand: 'Chivas Regal', categoryId: 'cat-whiskey', sizeMl: 750 },
-  { id: 'b-016', name: 'Indian Single Malt', brand: 'Amrut', categoryId: 'cat-whiskey', sizeMl: 700 },
-  // Vodka
-  { id: 'b-017', name: 'Classic', brand: 'Absolut', categoryId: 'cat-vodka', sizeMl: 750 },
-  { id: 'b-018', name: 'Gold', brand: 'Smirnoff', categoryId: 'cat-vodka', sizeMl: 750 },
-  { id: 'b-019', name: 'Premium', brand: 'Grey Goose', categoryId: 'cat-vodka', sizeMl: 750 },
-  { id: 'b-020', name: 'Citron', brand: 'Absolut', categoryId: 'cat-vodka', sizeMl: 1000 },
-  // Gin
-  { id: 'b-021', name: 'London Dry', brand: 'Bombay Sapphire', categoryId: 'cat-gin', sizeMl: 750 },
-  { id: 'b-022', name: 'Pink Gin', brand: 'Gordon’s', categoryId: 'cat-gin', sizeMl: 750 },
-  { id: 'b-023', name: 'Craft Gin', brand: 'Greater Than', categoryId: 'cat-gin', sizeMl: 750 },
-  // Rum
-  { id: 'b-024', name: 'Dark Rum', brand: 'Old Monk', categoryId: 'cat-rum', sizeMl: 750 },
-  { id: 'b-025', name: 'White Rum', brand: 'Bacardi', categoryId: 'cat-rum', sizeMl: 750 },
-  { id: 'b-026', name: 'Spiced Rum', brand: 'Captain Morgan', categoryId: 'cat-rum', sizeMl: 750 },
-  // Tequila
-  { id: 'b-027', name: 'Silver', brand: 'Jose Cuervo', categoryId: 'cat-tequila', sizeMl: 750 },
-  { id: 'b-028', name: 'Reposado', brand: 'Don Julio', categoryId: 'cat-tequila', sizeMl: 750 },
-  // Liqueur
-  { id: 'b-029', name: 'Irish Cream', brand: 'Baileys', categoryId: 'cat-liqueur', sizeMl: 750 },
-  { id: 'b-030', name: 'Coffee Liqueur', brand: 'Kahlúa', categoryId: 'cat-liqueur', sizeMl: 750 },
-  { id: 'b-031', name: 'Orange Liqueur', brand: 'Cointreau', categoryId: 'cat-liqueur', sizeMl: 700 },
-  { id: 'b-032', name: 'Herbal Liqueur', brand: 'Jägermeister', categoryId: 'cat-liqueur', sizeMl: 700 },
-  // Beer
-  { id: 'b-033', name: 'Premium Lager', brand: 'Kingfisher', categoryId: 'cat-beer', sizeMl: 650 },
-  { id: 'b-034', name: 'Wheat Beer', brand: 'Hoegaarden', categoryId: 'cat-beer', sizeMl: 330 },
-  { id: 'b-035', name: 'Strong Lager', brand: 'Carlsberg Elephant', categoryId: 'cat-beer', sizeMl: 500 },
-  { id: 'b-036', name: 'IPA', brand: 'Bira 91', categoryId: 'cat-beer', sizeMl: 330 },
+const whisky = (id: string, name: string): LiquorItem => ({ id, name, categoryId: 'cat-whisky' });
+const vodka = (id: string, name: string): LiquorItem => ({ id, name, categoryId: 'cat-vodka' });
+const rum = (id: string, name: string): LiquorItem => ({ id, name, categoryId: 'cat-rum' });
+
+export const seedItems: readonly LiquorItem[] = [
+  whisky('li-001', '100 Pipers'),
+  whisky('li-002', '100 Pipers 8 Year'),
+  whisky('li-003', 'Ballantine’s 7 Year'),
+  whisky('li-004', 'Chivas Regal'),
+  whisky('li-005', 'Black Dog Deluxe'),
+  whisky('li-006', 'Black Dog Centenary'),
+  whisky('li-007', 'Black & White'),
+  whisky('li-008', 'Red Label'),
+  whisky('li-009', 'Teacher’s 50'),
+  whisky('li-010', 'Teacher’s Highland Cream'),
+  whisky('li-011', 'William Lawson’s'),
+  whisky('li-012', 'Dewar’s Label'),
+  whisky('li-013', 'Vat 69'),
+  whisky('li-014', 'Royal Ranthambore'),
+  whisky('li-015', 'Antiquity Blue'),
+  whisky('li-016', 'Jameson Whiskey'),
+  whisky('li-017', 'Oaken Glow'),
+  whisky('li-018', 'Blenders Pride'),
+  whisky('li-019', 'Blenders Reserve'),
+  whisky('li-020', 'Sterling Reserve B10'),
+  whisky('li-021', 'Sterling Reserve B7'),
+  whisky('li-022', 'B7 Happy'),
+  whisky('li-023', 'B7 Cola'),
+  whisky('li-024', 'Imperial Blue'),
+  whisky('li-025', 'McDowell’s No.1'),
+  whisky('li-026', 'Oaksmith Gold'),
+  whisky('li-027', 'Oaksmith Whisky'),
+  whisky('li-028', 'OC Blue'),
+  whisky('li-029', 'Royal Stag Barrel Select'),
+  whisky('li-030', 'Royal Stag'),
+  whisky('li-031', 'Royal Green'),
+  whisky('li-032', 'RC American Pride'),
+  whisky('li-033', 'Royal Challenge'),
+  whisky('li-034', 'Rockford Classic'),
+  whisky('li-035', 'Rockford Reserve'),
+  whisky('li-036', 'Signature'),
+  whisky('li-037', 'Signature Premier'),
+  whisky('li-038', 'White & Blue'),
+  whisky('li-039', 'Iconiq White'),
+  vodka('li-040', 'Absolut Vodka'),
+  vodka('li-041', 'Absolut Flavour'),
+  vodka('li-042', 'Grand Master'),
+  vodka('li-043', 'Grand Master Flavour'),
+  vodka('li-044', 'Magic Moments Vodka'),
+  vodka('li-045', 'Magic Moments Flavour'),
+  vodka('li-046', 'Romanov Vodka'),
+  vodka('li-047', 'Smirnoff Vodka'),
+  vodka('li-048', 'Smirnoff Flavour'),
+  rum('li-049', 'Bacardi Black'),
+  rum('li-050', 'Bacardi Rum'),
+  rum('li-051', 'Bacardi Flavour'),
+  rum('li-052', 'Old Monk Legend'),
+  rum('li-053', 'Old Monk White Rum'),
+  rum('li-054', 'Old Monk Lemon'),
+  rum('li-055', 'RR Rum'),
 ];

@@ -19,6 +19,12 @@ export interface AppConfig {
   readonly apiBaseUrl: string;
   /** Master switch for analytics dispatch (defaults on; disable via env). */
   readonly analyticsEnabled: boolean;
+  /**
+   * Google Gemini API key for sheet extraction. Empty = mock extraction.
+   * Dev/personal use only — moves behind the backend once it exists.
+   */
+  readonly geminiApiKey: string;
+  readonly geminiModel: string;
 }
 
 function resolveEnvironment(): AppEnvironment {
@@ -34,4 +40,6 @@ export const appConfig: AppConfig = Object.freeze({
   appVersion: Constants.expoConfig?.version ?? '0.0.0',
   apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL ?? '',
   analyticsEnabled: (process.env.EXPO_PUBLIC_ANALYTICS_ENABLED ?? 'true') !== 'false',
+  geminiApiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '',
+  geminiModel: process.env.EXPO_PUBLIC_GEMINI_MODEL ?? 'gemini-2.5-flash',
 });

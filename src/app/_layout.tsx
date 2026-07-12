@@ -49,7 +49,7 @@ function RootNavigator() {
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="session/[id]" options={{ title: 'Session details' }} />
+        <Stack.Screen name="register/[id]" options={{ title: 'Register' }} />
       </Stack>
       <SnackbarHost />
     </NavigationThemeProvider>

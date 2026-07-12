@@ -108,6 +108,7 @@ export const AppButton = memo(function AppButton({
           paddingHorizontal: theme.spacing.lg,
           gap: theme.spacing.sm,
           opacity: inactive ? DISABLED_OPACITY : 1,
+          transform: [{ scale: pressed ? 0.98 : 1 }],
           ...(colors.borderColor
             ? { borderWidth: StyleSheet.hairlineWidth, borderColor: colors.borderColor }
             : {}),

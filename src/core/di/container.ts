@@ -6,6 +6,7 @@ import {
   AnalyticsService,
   ConsoleAnalyticsProvider,
 } from '@/services/analytics';
+import { GeminiExtractionService } from '@/services/extraction/gemini-extraction-service';
 import type { InventoryExtractionService } from '@/services/extraction/inventory-extraction-service';
 import { MockInventoryExtractionService } from '@/services/extraction/mock-inventory-extraction-service';
 import type { InventoryExportService } from '@/services/export/export-service';
@@ -23,6 +24,8 @@ export interface AppContainer {
   readonly storage: KeyValueStorage;
   readonly inventoryRepository: InventoryRepository;
   readonly extractionService: InventoryExtractionService;
+  /** Which extraction backend is active — for analytics/UI hints only. */
+  readonly extractionProvider: 'mock' | 'gemini';
   readonly exportService: InventoryExportService;
   readonly analytics: AnalyticsService;
 }
@@ -30,10 +33,16 @@ export interface AppContainer {
 function buildContainer(): AppContainer {
   const storage = new AsyncStorageService();
 
+  // Real AI extraction switches on automatically when a key is configured.
+  const extractionService: InventoryExtractionService = appConfig.geminiApiKey
+    ? new GeminiExtractionService(appConfig.geminiApiKey, appConfig.geminiModel)
+    : new MockInventoryExtractionService();
+
   return {
     storage,
     inventoryRepository: new MockInventoryRepository(storage),
-    extractionService: new MockInventoryExtractionService(),
+    extractionService,
+    extractionProvider: appConfig.geminiApiKey ? 'gemini' : 'mock',
     exportService: new MockExcelExportService(),
     analytics: new AnalyticsService([new ConsoleAnalyticsProvider()], appConfig.analyticsEnabled),
   };

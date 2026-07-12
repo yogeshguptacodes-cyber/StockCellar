@@ -1,1 +1,1 @@
-export { ManualEntryScreen as default } from '@/features/inventory/screens/manual-entry-screen';
+export { RegisterScreen as default } from '@/features/inventory/screens/register-screen';

@@ -8,16 +8,23 @@ export type AnalyticsEvent =
   | { name: 'app_open' }
   | { name: 'manual_entry_started' }
   | { name: 'bottle_search'; payload: { query: string } }
-  | { name: 'bottle_quantity_updated'; payload: { bottleId: string; quantity: number } }
-  | { name: 'inventory_reset'; payload: { skusCleared: number } }
-  | { name: 'inventory_saved'; payload: { sessionId: string; totalSkus: number; totalUnits: number } }
+  | {
+      name: 'register_cell_updated';
+      payload: { itemId: string; field: string; size: number; quantity: number };
+    }
+  | { name: 'register_amount_updated'; payload: { itemId: string; amountRs: number } }
+  | { name: 'inventory_reset'; payload: { rowsCleared: number } }
+  | {
+      name: 'inventory_saved';
+      payload: { registerId: string; rowCount: number; saleUnits: number; amountRs: number };
+    }
   | { name: 'scan_image_selected'; payload: { source: 'camera' | 'gallery' } }
-  | { name: 'ai_scan_started' }
-  | { name: 'ai_scan_completed'; payload: { skuCount: number } }
-  | { name: 'scan_applied'; payload: { skuCount: number } }
-  | { name: 'excel_exported'; payload: { sessionId: string; rowCount: number } }
+  | { name: 'ai_scan_started'; payload: { provider: 'mock' | 'gemini' } }
+  | { name: 'ai_scan_completed'; payload: { rowCount: number } }
+  | { name: 'scan_applied'; payload: { matched: number; unmatched: number } }
+  | { name: 'excel_exported'; payload: { registerId: string; rowCount: number } }
   | { name: 'history_viewed' }
-  | { name: 'session_deleted'; payload: { sessionId: string } }
+  | { name: 'register_deleted'; payload: { registerId: string } }
   | { name: 'theme_changed'; payload: { preference: string } }
   | { name: 'error_occurred'; payload: { code: string; message: string } };
 

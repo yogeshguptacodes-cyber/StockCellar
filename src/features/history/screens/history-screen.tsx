@@ -6,25 +6,21 @@ import { StyleSheet, View } from 'react-native';
 import { useHistoryStore } from '../store/history-store';
 
 import { container } from '@/core/di/container';
-import type { InventorySession } from '@/domain/models';
+import { summarizeRegister } from '@/domain/models';
 import { Screen } from '@/shared/components/layouts/screen';
 import { AppCard, AppText, EmptyState } from '@/shared/components/ui';
-import { formatDateTime } from '@/shared/utils/format-date';
+import { formatRupees } from '@/shared/utils/format-currency';
+import { formatDate } from '@/shared/utils/format-date';
 import { useTheme } from '@/theme';
-
-const SOURCE_LABEL: Record<InventorySession['source'], string> = {
-  manual: 'Manual count',
-  scan: 'Scanned sheet',
-};
 
 export function HistoryScreen() {
   const theme = useTheme();
   const router = useRouter();
   const status = useHistoryStore((state) => state.status);
-  const sessions = useHistoryStore((state) => state.sessions);
+  const registers = useHistoryStore((state) => state.registers);
   const load = useHistoryStore((state) => state.load);
 
-  // Refresh whenever the tab regains focus (new sessions may have been saved).
+  // Refresh whenever the tab regains focus (new registers may have been saved).
   useFocusEffect(
     useCallback(() => {
       void load();
@@ -40,45 +36,44 @@ export function HistoryScreen() {
       <View style={{ gap: theme.spacing.md, paddingTop: theme.spacing.md }}>
         <AppText variant="headline">History</AppText>
 
-        {status === 'ready' && sessions.length === 0 ? (
+        {status === 'ready' && registers.length === 0 ? (
           <EmptyState
             icon="time-outline"
-            title="No counts yet"
-            message="Complete a manual count or scan a sheet — every saved session appears here."
-            actionLabel="Start counting"
+            title="No registers yet"
+            message="Save a daily register — every completed sheet appears here."
+            actionLabel="Start a register"
             onAction={() => router.navigate('/(tabs)/inventory')}
           />
         ) : (
-          sessions.map((session) => {
-            const totalUnits = session.entries.reduce((sum, entry) => sum + entry.quantity, 0);
+          registers.map((register) => {
+            const summary = summarizeRegister(register);
             return (
               <AppCard
-                key={session.id}
+                key={register.id}
                 onPress={() =>
-                  router.push({ pathname: '/session/[id]', params: { id: session.id } })
+                  router.push({ pathname: '/register/[id]', params: { id: register.id } })
                 }
-                accessibilityLabel={`Session from ${formatDateTime(session.completedAt ?? session.startedAt)}`}>
+                accessibilityLabel={`Register from ${formatDate(register.date)}`}>
                 <View style={[styles.row, { gap: theme.spacing.md }]}>
                   <View
                     style={[
                       styles.iconBubble,
                       { backgroundColor: theme.colors.primaryMuted, borderRadius: theme.radius.full },
                     ]}>
-                    <Ionicons
-                      name={session.source === 'scan' ? 'scan-outline' : 'create-outline'}
-                      size={20}
-                      color={theme.colors.primary}
-                    />
+                    <Ionicons name="reader-outline" size={20} color={theme.colors.primary} />
                   </View>
                   <View style={styles.rowInfo}>
-                    <AppText variant="bodyStrong">
-                      {formatDateTime(session.completedAt ?? session.startedAt)}
-                    </AppText>
+                    <AppText variant="bodyStrong">{formatDate(register.date)}</AppText>
                     <AppText variant="caption" color="textSecondary">
-                      {SOURCE_LABEL[session.source]} · {session.entries.length} SKUs · {totalUnits} bottles
+                      {register.barName} · {summary.rowCount} items · {summary.saleUnits} sold
                     </AppText>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color={theme.colors.textTertiary} />
+                  <View style={styles.amountBlock}>
+                    <AppText variant="bodyStrong" color="primary">
+                      {formatRupees(summary.totalAmountRs)}
+                    </AppText>
+                    <Ionicons name="chevron-forward" size={16} color={theme.colors.textTertiary} />
+                  </View>
                 </View>
               </AppCard>
             );
@@ -102,5 +97,10 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  amountBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
 });

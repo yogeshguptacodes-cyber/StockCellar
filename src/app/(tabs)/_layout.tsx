@@ -15,7 +15,7 @@ interface TabConfig {
 
 const TABS: readonly TabConfig[] = [
   { name: 'index', title: 'Home', icon: 'home-outline', iconFocused: 'home' },
-  { name: 'inventory', title: 'Count', icon: 'create-outline', iconFocused: 'create' },
+  { name: 'inventory', title: 'Register', icon: 'create-outline', iconFocused: 'create' },
   { name: 'scanner', title: 'Scan', icon: 'scan-outline', iconFocused: 'scan' },
   { name: 'history', title: 'History', icon: 'time-outline', iconFocused: 'time' },
   { name: 'settings', title: 'Settings', icon: 'settings-outline', iconFocused: 'settings' },

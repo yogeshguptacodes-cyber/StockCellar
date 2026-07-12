@@ -1,5 +1,5 @@
 import { memo, type PropsWithChildren } from 'react';
-import { Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { useTheme } from '@/theme';
 
@@ -9,7 +9,12 @@ export interface AppCardProps {
   accessibilityLabel?: string;
 }
 
-/** Surface molecule: padded, rounded, elevated. Pressable when `onPress` given. */
+const PRESSED_SCALE = 0.98;
+
+/**
+ * Surface molecule: padded, rounded, hairline-bordered, softly elevated.
+ * Pressable (with scale feedback) when `onPress` is given.
+ */
 export const AppCard = memo(function AppCard({
   onPress,
   style,
@@ -21,7 +26,7 @@ export const AppCard = memo(function AppCard({
     backgroundColor: theme.colors.surface,
     borderRadius: theme.radius.lg,
     padding: theme.spacing.lg,
-    borderWidth: theme.mode === 'dark' ? 1 : 0,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: theme.colors.border,
     ...theme.elevation.level1,
   };
@@ -32,7 +37,11 @@ export const AppCard = memo(function AppCard({
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
-        style={({ pressed }) => [surfaceStyle, pressed && { opacity: 0.85 }, style]}>
+        style={({ pressed }) => [
+          surfaceStyle,
+          pressed && { transform: [{ scale: PRESSED_SCALE }], opacity: 0.92 },
+          style,
+        ]}>
         {children}
       </Pressable>
     );

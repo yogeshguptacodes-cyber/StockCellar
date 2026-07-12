@@ -1,9 +1,9 @@
-import type { Bottle, Category, InventorySession } from '@/domain/models';
+import type { LiquorItem, StockRegister } from '@/domain/models';
 
 /**
- * Inventory export contract.
+ * Register export contract.
  *
- * v1: `MockExcelExportService` builds the CSV and logs it.
+ * v1: `MockExcelExportService` builds the CSV (sheet-shaped) and logs it.
  * v2: ExcelJS + share sheet — same interface, no screen changes.
  */
 export interface ExportResult {
@@ -12,9 +12,8 @@ export interface ExportResult {
 }
 
 export interface InventoryExportService {
-  exportSession(
-    session: InventorySession,
-    bottleById: ReadonlyMap<string, Bottle>,
-    categoryById: ReadonlyMap<string, Category>,
+  exportRegister(
+    register: StockRegister,
+    itemById: ReadonlyMap<string, LiquorItem>,
   ): Promise<ExportResult>;
 }

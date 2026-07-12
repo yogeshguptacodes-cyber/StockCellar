@@ -3,7 +3,10 @@ import { create } from 'zustand';
 import { container } from '@/core/di/container';
 import { normalizeError } from '@/core/errors';
 import { createLogger } from '@/core/logger';
-import type { ExtractionResult } from '@/services/extraction/inventory-extraction-service';
+import type {
+  ExtractionImage,
+  ExtractionResult,
+} from '@/services/extraction/inventory-extraction-service';
 
 const log = createLogger('scanner:store');
 
@@ -12,40 +15,43 @@ export type ScannerPhase = 'idle' | 'preview' | 'extracting' | 'review';
 
 interface ScannerState {
   phase: ScannerPhase;
-  imageUri: string | null;
+  image: ExtractionImage | null;
   result: ExtractionResult | null;
   errorMessage: string | null;
 
-  setImage: (uri: string, source: 'camera' | 'gallery') => void;
+  setImage: (image: ExtractionImage, source: 'camera' | 'gallery') => void;
   extract: () => Promise<void>;
   reset: () => void;
-  /** Called after entries are applied to the inventory draft. */
+  /** Called after rows are applied to the register draft. */
   markApplied: () => void;
 }
 
 export const useScannerStore = create<ScannerState>()((set, get) => ({
   phase: 'idle',
-  imageUri: null,
+  image: null,
   result: null,
   errorMessage: null,
 
-  setImage: (uri, source) => {
-    set({ phase: 'preview', imageUri: uri, result: null, errorMessage: null });
+  setImage: (image, source) => {
+    set({ phase: 'preview', image, result: null, errorMessage: null });
     container.analytics.track({ name: 'scan_image_selected', payload: { source } });
   },
 
   extract: async () => {
-    const { imageUri } = get();
-    if (!imageUri) {
+    const { image } = get();
+    if (!image) {
       return;
     }
     set({ phase: 'extracting', errorMessage: null });
-    container.analytics.track({ name: 'ai_scan_started' });
+    container.analytics.track({
+      name: 'ai_scan_started',
+      payload: { provider: container.extractionProvider },
+    });
     try {
-      const result = await container.extractionService.extractFromImage(imageUri);
+      const result = await container.extractionService.extractFromImage(image);
       container.analytics.track({
         name: 'ai_scan_completed',
-        payload: { skuCount: result.entries.length },
+        payload: { rowCount: result.rows.length },
       });
       set({ phase: 'review', result });
     } catch (error) {
@@ -55,11 +61,17 @@ export const useScannerStore = create<ScannerState>()((set, get) => ({
         name: 'error_occurred',
         payload: { code: normalized.code, message: normalized.message },
       });
-      set({ phase: 'preview', errorMessage: 'Could not read the sheet. Please try again.' });
+      set({
+        phase: 'preview',
+        errorMessage:
+          normalized.code === 'NETWORK'
+            ? 'Could not reach the extraction service. Check your connection and try again.'
+            : 'Could not read the sheet. Please try again.',
+      });
     }
   },
 
-  reset: () => set({ phase: 'idle', imageUri: null, result: null, errorMessage: null }),
+  reset: () => set({ phase: 'idle', image: null, result: null, errorMessage: null }),
 
-  markApplied: () => set({ phase: 'idle', imageUri: null, result: null, errorMessage: null }),
+  markApplied: () => set({ phase: 'idle', image: null, result: null, errorMessage: null }),
 }));
